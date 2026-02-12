@@ -11,7 +11,18 @@ import {
   Alert,
   Image,
 } from 'react-native';
- function LoginScreen () {
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// import { appleAuth } from '@react-native-apple-authentication';
+import SignupScreen from './SignupScreen';
+
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  offlineAccess: true,
+});
+
+function LoginScreen({ navigation}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
@@ -36,10 +47,88 @@ import {
     // Placeholder: replace with real auth call
     setTimeout(() => {
       setLoading(false);
-      // On success navigate; adjust route name to your app's stack
-      if (navigation && navigation.navigate) navigation.navigate('Home');
-      else Alert.alert('Logged in', 'Login simulated (no navigation configured).');
+      // if (navigation && navigation.navigate) navigation.navigate('Home');
+      // else Alert.alert('Logged in', 'Login simulated (no navigation configured).');
     }, 900);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+
+      const { user, idToken } = userInfo;
+
+      // Send idToken to your backend for verification
+      const response = await fetch('YOUR_BACKEND_URL/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, email: user.email }),
+      });
+
+      if (response.ok) {
+        Alert.alert('Success', `Logged in as ${user.email}`);
+        navigation?.navigate('Home');
+      } else {
+        Alert.alert('Error', 'Backend authentication failed');
+      }
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled sign-in');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('Sign-in is in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Error', 'Play Services not available');
+      } else {
+        Alert.alert('Error', error.message || 'Google sign-in failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+
+      // Check if Apple SignIn is available
+      if (!appleAuth.isSupported) {
+        Alert.alert('Error', 'Apple Sign-In not supported on this device');
+        return;
+      }
+
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      const { identityToken, nonce } = appleAuthRequestResponse;
+
+      if (identityToken) {
+        // Send identityToken to your backend for verification
+        const response = await fetch('YOUR_BACKEND_URL/auth/apple', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identityToken, nonce }),
+        });
+
+        if (response.ok) {
+          Alert.alert('Success', 'Logged in with Apple');
+          navigation?.navigate('Home');
+        } else {
+          Alert.alert('Error', 'Backend authentication failed');
+        }
+      }
+    } catch (error) {
+      if (error.code === appleAuth.Error.CANCELED) {
+        console.log('User cancelled Apple Sign-In');
+      } else {
+        Alert.alert('Error', error.message || 'Apple sign-in failed');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,17 +196,25 @@ import {
           </View>
 
           <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialBtn} onPress={() => Alert.alert('Google', 'Google sign-in placeholder')}>
+            <TouchableOpacity 
+              style={styles.socialBtn} 
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
               <Text style={styles.socialText}>Google</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} onPress={() => Alert.alert('Apple', 'Apple sign-in placeholder')}>
+            {/* <TouchableOpacity 
+              style={styles.socialBtn} 
+              onPress={handleAppleSignIn}
+              disabled={loading}
+            >
               <Text style={styles.socialText}>Apple</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           <View style={styles.signupRow}>
             <Text style={styles.signupText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => navigation?.navigate?.('SignUp')}> 
+            <TouchableOpacity onPress={() => navigation.push('SignupScreen')}>
               <Text style={styles.signupLink}> Create account</Text>
             </TouchableOpacity>
           </View>
@@ -177,6 +274,5 @@ const styles = StyleSheet.create({
   signupText: { color: '#475569' },
   signupLink: { color: '#2563EB', fontWeight: '600' },
 });
-
 
 export default LoginScreen;
