@@ -50,6 +50,7 @@ function LoginScreen({ navigation}) {
       // if (navigation && navigation.navigate) navigation.navigate('Home');
       // else Alert.alert('Logged in', 'Login simulated (no navigation configured).');
     }, 900);
+    navigation.navigate('Home');
   };
 
   const handleGoogleSignIn = async () => {

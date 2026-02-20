@@ -188,7 +188,7 @@ const SignupScreen = ({navigation}) => {
       console.log('Patient registered:', patientData);
       // Navigate to success screen or login
     }, 2000);
-    navigation?.navigate('LoginScreen');
+    navigation.navigate('LoginScreen');
   };
 
   const renderGenderOptions = () => {
