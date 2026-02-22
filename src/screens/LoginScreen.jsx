@@ -14,6 +14,7 @@ import {
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 // import { appleAuth } from '@react-native-apple-authentication';
 import SignupScreen from './SignupScreen';
+import scheduleDailyNotification from '../services/notification';
 
 
 // Configure Google Sign-In
@@ -51,6 +52,7 @@ function LoginScreen({ navigation}) {
       // else Alert.alert('Logged in', 'Login simulated (no navigation configured).');
     }, 900);
     navigation.navigate('Home');
+    scheduleDailyNotification();
   };
 
   const handleGoogleSignIn = async () => {

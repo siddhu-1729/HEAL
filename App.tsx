@@ -20,24 +20,25 @@ export default function App() {
 
       <NavigationContainer>
         <Stack.Navigator initialRouteName="LoginScreen">
+          {/* login Screen */}
           <Stack.Screen
             name="LoginScreen"
             component={LoginScreen}
             options={{ headerShown: false }}
           />
-
+{/* Signup screen  */}
           <Stack.Screen
             name="SignupScreen"
             component={SignupScreen}
             options={{ headerShown: false }}
           />
-
+{/* Home Screen */}
           <Stack.Screen
             name="Home"
             component={HomeScreen}
             options={{ headerShown: false }}
           />
-
+{/* Fitness component screen */}
           <Stack.Screen 
              name="fitness"
              component={FitnessScreen}
