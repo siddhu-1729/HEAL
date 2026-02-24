@@ -1,898 +1,249 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  FlatList,
-  Modal,
-  TextInput,
-  Alert,
-} from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, SafeAreaView, StatusBar, FlatList, Alert,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 
-const COLORS = {
-  primary: "#2196F3",
-  secondary: "#1976D2",
-  success: "#4CAF50",
-  warning: "#FFC107",
-  danger: "#F44336",
-  info: "#00BCD4",
-  background: "#F5F7FA",
-  white: "#FFFFFF",
-  text: "#333333",
-  lightText: "#666666",
-  border: "#E0E0E0",
-};
-
-const ACTIVITY_TYPES = [
-  { id: 1, name: "Walking", icon: "🚶", color: ["#667eea", "#764ba2"] },
-  { id: 2, name: "Running", icon: "🏃", color: ["#f093fb", "#f5576c"] },
-  { id: 3, name: "Cycling", icon: "🚴", color: ["#4facfe", "#00f2fe"] },
-  { id: 4, name: "Swimming", icon: "🏊", color: ["#43e97b", "#38f9d7"] },
-  { id: 5, name: "Yoga", icon: "🧘", color: ["#fa709a", "#fee140"] },
-  { id: 6, name: "Gym", icon: "🏋️", color: ["#30cfd0", "#330867"] },
-  { id: 7, name: "Basketball", icon: "🏀", color: ["#a8edea", "#fed6e3"] },
-  { id: 8, name: "Tennis", icon: "🎾", color: ["#ff9a56", "#ff6a88"] },
+const DAILY_STATS = [
+  { label: 'Steps', value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
+  { label: 'Calories', value: '1,840', target: '2,200', icon: '🔥', pct: 84, color: COLORS.danger },
+  { label: 'Water', value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
+  { label: 'Sleep', value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
 ];
 
-const DAILY_METRICS = [
-  { id: 1, label: "Steps", value: "8,432", goal: "10,000", icon: "👣" },
-  { id: 2, label: "Calories", value: "456", goal: "600", icon: "🔥" },
-  { id: 3, label: "Distance", value: "5.2", goal: "8", icon: "📏", unit: "km" },
-  { id: 4, label: "Heart Rate", value: "72", goal: "Avg", icon: "❤️", unit: "bpm" },
+const WORKOUTS = [
+  { id: '1', name: 'Morning Run', duration: '30 min', calories: 320, type: 'Cardio', icon: '🏃', done: true, colors: COLORS.gradPrimary },
+  { id: '2', name: 'Push-Up Circuit', duration: '20 min', calories: 180, type: 'Strength', icon: '💪', done: true, colors: COLORS.gradAccent },
+  { id: '3', name: 'Yoga & Stretch', duration: '25 min', calories: 120, type: 'Flex', icon: '🧘', done: false, colors: COLORS.gradPurple },
+  { id: '4', name: 'Cycling', duration: '45 min', calories: 450, type: 'Cardio', icon: '🚴', done: false, colors: COLORS.gradBone },
 ];
 
-const SLEEP_DATA = [
-  { id: 1, date: "Today", hours: 7.5, quality: "Good", icon: "😴" },
-  { id: 2, date: "Yesterday", hours: 6.8, quality: "Fair", icon: "😴" },
-  { id: 3, date: "Feb 18", hours: 8.2, quality: "Excellent", icon: "😴" },
+const WEEKLY = [
+  { day: 'Mon', pct: 95 }, { day: 'Tue', pct: 60 }, { day: 'Wed', pct: 80 },
+  { day: 'Thu', pct: 100 }, { day: 'Fri', pct: 45 }, { day: 'Sat', pct: 70 }, { day: 'Sun', pct: 30 },
 ];
 
-const WATER_INTAKE = [
-  { id: 1, time: "8:00 AM", cups: 2, icon: "💧" },
-  { id: 2, time: "12:00 PM", cups: 3, icon: "💧" },
-  { id: 3, time: "3:00 PM", cups: 2, icon: "💧" },
-  { id: 4, time: "6:00 PM", cups: 1, icon: "💧" },
-];
+export default function FitnessScreen({ navigation }) {
+  const [workouts, setWorkouts] = useState(WORKOUTS);
+  const [water, setWater] = useState(6);
+  const [showBMI, setShowBMI] = useState(false);
+  const [weight, setWeight] = useState('70');
+  const [height, setHeight] = useState('170');
 
-const RECENT_ACTIVITIES = [
-  {
-    id: 1,
-    name: "Morning Run",
-    duration: 30,
-    distance: 5,
-    calories: 350,
-    date: "Today, 6:30 AM",
-    icon: "🏃",
-  },
-  {
-    id: 2,
-    name: "Gym Workout",
-    duration: 60,
-    distance: 0,
-    calories: 450,
-    date: "Today, 5:00 PM",
-    icon: "🏋️",
-  },
-  {
-    id: 3,
-    name: "Evening Walk",
-    duration: 20,
-    distance: 2,
-    calories: 120,
-    date: "Yesterday, 7:00 PM",
-    icon: "🚶",
-  },
-  {
-    id: 4,
-    name: "Yoga Session",
-    duration: 45,
-    distance: 0,
-    calories: 180,
-    date: "Yesterday, 10:00 AM",
-    icon: "🧘",
-  },
-];
+  const toggleWorkout = (id) => setWorkouts(prev => prev.map(w => w.id === id ? { ...w, done: !w.done } : w));
+  const doneCount = workouts.filter(w => w.done).length;
 
-export default function FitnessScreen() {
-  const [selectedActivity, setSelectedActivity] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState({
-    duration: "",
-    distance: "",
-    calories: "",
-  });
-  const [activities, setActivities] = useState(RECENT_ACTIVITIES);
-  const [waterCups, setWaterCups] = useState(WATER_INTAKE.length);
-
-  const handleAddActivity = () => {
-    if (!selectedActivity || !formData.duration) {
-      Alert.alert("Error", "Please select activity and duration");
-      return;
-    }
-
-    const newActivity = {
-      id: activities.length + 1,
-      name: ACTIVITY_TYPES.find((a) => a.id === selectedActivity)?.name,
-      icon: ACTIVITY_TYPES.find((a) => a.id === selectedActivity)?.icon,
-      duration: parseInt(formData.duration),
-      distance: parseInt(formData.distance) || 0,
-      calories: parseInt(formData.calories) || 0,
-      date: new Date().toLocaleString(),
-    };
-
-    setActivities([newActivity, ...activities]);
-    setModalVisible(false);
-    setFormData({ duration: "", distance: "", calories: "" });
-    setSelectedActivity(null);
-    Alert.alert("Success", "Activity logged successfully!");
-  };
-
-  const handleAddWater = () => {
-    setWaterCups(waterCups + 1);
-  };
-
-  const renderActivityTypeCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => setSelectedActivity(item.id)}
-      style={[
-        styles.activityTypeCard,
-        selectedActivity === item.id && styles.activityTypeCardSelected,
-      ]}
-    >
-      <LinearGradient
-        colors={item.color}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.activityTypeGradient}
-      >
-        <Text style={styles.activityTypeIcon}>{item.icon}</Text>
-        <Text style={styles.activityTypeName}>{item.name}</Text>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-
-  const renderMetricCard = ({ item }) => (
-    <View style={styles.metricCard}>
-      <View style={styles.metricTop}>
-        <Text style={styles.metricIcon}>{item.icon}</Text>
-        <Text style={styles.metricLabel}>{item.label}</Text>
-      </View>
-      <Text style={styles.metricValue}>{item.value}</Text>
-      <View style={styles.metricProgress}>
-        <View
-          style={[
-            styles.metricProgressBar,
-            {
-              width: `${
-                (parseInt(item.value.replace(/,/g, "")) /
-                  parseInt(item.goal.replace(/,/g, ""))) *
-                100
-              }%`,
-            },
-          ]}
-        />
-      </View>
-      <View style={styles.metricGoal}>
-        <Text style={styles.metricGoalText}>Goal: {item.goal}</Text>
-        {item.unit && <Text style={styles.metricUnit}>{item.unit}</Text>}
-      </View>
-    </View>
-  );
-
-  const renderSleepCard = ({ item }) => (
-    <View style={styles.sleepCard}>
-      <View style={styles.sleepLeft}>
-        <Text style={styles.sleepIcon}>{item.icon}</Text>
-      </View>
-      <View style={styles.sleepContent}>
-        <Text style={styles.sleepDate}>{item.date}</Text>
-        <Text style={styles.sleepHours}>{item.hours} hours</Text>
-        <Text style={styles.sleepQuality}>{item.quality} quality</Text>
-      </View>
-      <View
-        style={[
-          styles.sleepBadge,
-          {
-            backgroundColor:
-              item.quality === "Excellent"
-                ? COLORS.success
-                : item.quality === "Good"
-                ? COLORS.info
-                : COLORS.warning,
-          },
-        ]}
-      >
-        <Text style={styles.sleepBadgeText}>
-          {item.quality === "Excellent" ? "⭐" : "✓"}
-        </Text>
-      </View>
-    </View>
-  );
-
-  const renderActivityCard = ({ item }) => (
-    <View style={styles.activityCard}>
-      <View style={styles.activityIcon}>
-        <Text style={styles.activityCardIcon}>{item.icon}</Text>
-      </View>
-      <View style={styles.activityBody}>
-        <Text style={styles.activityName}>{item.name}</Text>
-        <Text style={styles.activityDate}>{item.date}</Text>
-        <View style={styles.activityDetails}>
-          <View style={styles.activityDetail}>
-            <Text style={styles.activityDetailIcon}>⏱️</Text>
-            <Text style={styles.activityDetailText}>{item.duration} min</Text>
-          </View>
-          {item.distance > 0 && (
-            <View style={styles.activityDetail}>
-              <Text style={styles.activityDetailIcon}>📏</Text>
-              <Text style={styles.activityDetailText}>{item.distance} km</Text>
-            </View>
-          )}
-          <View style={styles.activityDetail}>
-            <Text style={styles.activityDetailIcon}>🔥</Text>
-            <Text style={styles.activityDetailText}>{item.calories} cal</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
+  const bmi = weight && height ? (parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1) : null;
+  const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+  const bmiColor = bmi < 18.5 ? COLORS.info : bmi < 25 ? COLORS.success : bmi < 30 ? COLORS.warning : COLORS.danger;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollView}
-      >
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Fitness Tracker</Text>
-          <Text style={styles.headerSubtitle}>
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "short",
-              day: "numeric",
-            })}
-          </Text>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
-        {/* Daily Metrics Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Daily Activity</Text>
-          <FlatList
-            data={DAILY_METRICS}
-            renderItem={renderMetricCard}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
-            columnWrapperStyle={styles.metricRow}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Water Intake Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Water Intake</Text>
-            <Text style={styles.waterCount}>{waterCups} cups</Text>
+        {/* ── Top bar ── */}
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.pageTitle}>Fitness</Text>
+            <Text style={styles.pageSub}>Today's Activity</Text>
           </View>
-          <View style={styles.waterContainer}>
-            <View style={styles.waterProgress}>
-              <View
-                style={[
-                  styles.waterProgressBar,
-                  { width: `${(waterCups / 8) * 100}%` },
-                ]}
-              />
-            </View>
-            <TouchableOpacity
-              style={styles.addWaterButton}
-              onPress={handleAddWater}
-            >
-              <Text style={styles.addWaterText}>+ Add Water</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.waterLog}>
-            <FlatList
-              data={WATER_INTAKE.slice(0, waterCups)}
-              renderItem={({ item }) => (
-                <View style={styles.waterItem}>
-                  <Text style={styles.waterIcon}>{item.icon}</Text>
-                  <View style={styles.waterItemContent}>
-                    <Text style={styles.waterTime}>{item.time}</Text>
-                    <Text style={styles.waterCupsText}>
-                      {item.cups} cups consumed
-                    </Text>
-                  </View>
-                </View>
-              )}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-            />
-          </View>
-        </View>
-
-        {/* Sleep Tracking Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sleep Tracking</Text>
-          <FlatList
-            data={SLEEP_DATA}
-            renderItem={renderSleepCard}
-            keyExtractor={(item) => item.id.toString()}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Log Activity Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Log Activity</Text>
           <TouchableOpacity
-            style={styles.logActivityButton}
-            onPress={() => setModalVisible(true)}
+            style={styles.bmiBtn}
+            onPress={() => setShowBMI(s => !s)}
           >
-            <Text style={styles.logActivityIcon}>➕</Text>
-            <View>
-              <Text style={styles.logActivityTitle}>Add New Activity</Text>
-              <Text style={styles.logActivitySubtitle}>
-                Track your fitness
-              </Text>
-            </View>
+            <Text style={styles.bmiBtnTxt}>⚖️ BMI</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Recent Activities Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activities</Text>
-          <FlatList
-            data={activities.slice(0, 5)}
-            renderItem={renderActivityCard}
-            keyExtractor={(item) => item.id.toString()}
-            scrollEnabled={false}
-          />
-        </View>
-
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-
-      {/* Activity Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Log Activity</Text>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseIcon}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody}>
-              {/* Select Activity Type */}
-              <Text style={styles.modalSectionTitle}>Select Activity</Text>
-              <FlatList
-                data={ACTIVITY_TYPES}
-                renderItem={renderActivityTypeCard}
-                keyExtractor={(item) => item.id.toString()}
-                numColumns={4}
-                columnWrapperStyle={styles.activityTypeRow}
-                scrollEnabled={false}
-              />
-
-              {/* Duration Input */}
-              <Text style={styles.inputLabel}>Duration (minutes) *</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter duration"
-                placeholderTextColor={COLORS.lightText}
-                keyboardType="numeric"
-                value={formData.duration}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, duration: text })
-                }
-              />
-
-              {/* Distance Input */}
-              <Text style={styles.inputLabel}>Distance (km)</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter distance (optional)"
-                placeholderTextColor={COLORS.lightText}
-                keyboardType="decimal-pad"
-                value={formData.distance}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, distance: text })
-                }
-              />
-
-              {/* Calories Input */}
-              <Text style={styles.inputLabel}>Calories Burned</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter calories (optional)"
-                placeholderTextColor={COLORS.lightText}
-                keyboardType="numeric"
-                value={formData.calories}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, calories: text })
-                }
-              />
-
-              {/* Action Buttons */}
-              <View style={styles.modalButtonContainer}>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalSaveButton}
-                  onPress={handleAddActivity}
-                >
-                  <Text style={styles.modalSaveText}>Save Activity</Text>
-                </TouchableOpacity>
+        {/* ── BMI Calculator ── */}
+        {showBMI && (
+          <View style={styles.px}>
+            <LinearGradient colors={COLORS.gradPrimary} style={styles.bmiCard}>
+              <Text style={styles.bmiTitle}>BMI Calculator</Text>
+              <View style={styles.bmiInputs}>
+                <View style={styles.bmiField}>
+                  <Text style={styles.bmiFieldLabel}>Weight (kg)</Text>
+                  <View style={styles.bmiInput}>
+                    <Text style={styles.bmiInputTxt}
+                      onPress={() => Alert.prompt?.('Weight', 'Enter weight in kg', setWeight) ?? Alert.alert('Enter', 'Type in weight field')}>
+                      {weight} kg
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.bmiField}>
+                  <Text style={styles.bmiFieldLabel}>Height (cm)</Text>
+                  <View style={styles.bmiInput}>
+                    <Text style={styles.bmiInputTxt}>{height} cm</Text>
+                  </View>
+                </View>
               </View>
-            </ScrollView>
+              {bmi && (
+                <View style={styles.bmiResult}>
+                  <Text style={styles.bmiVal}>{bmi}</Text>
+                  <View style={[styles.bmiLabelPill, { backgroundColor: bmiColor }]}>
+                    <Text style={styles.bmiLabelTxt}>{bmiLabel}</Text>
+                  </View>
+                </View>
+              )}
+            </LinearGradient>
+          </View>
+        )}
+
+        {/* ── Daily Stats ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Stats</Text>
+          <View style={styles.statsGrid}>
+            {DAILY_STATS.map(s => (
+              <View key={s.label} style={styles.statCard}>
+                <Text style={styles.statIcon}>{s.icon}</Text>
+                <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
+                <Text style={styles.statTarget}>/ {s.target}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+                <View style={styles.statBarBg}>
+                  <View style={[styles.statBarFill, { width: `${s.pct}%`, backgroundColor: s.color }]} />
+                </View>
+              </View>
+            ))}
           </View>
         </View>
-      </Modal>
+
+        {/* ── Water tracker ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Water Intake</Text>
+            <Text style={styles.seeAll}>{water} / 8 glasses</Text>
+          </View>
+          <View style={styles.waterCard}>
+            <View style={styles.glassRow}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <TouchableOpacity key={i} onPress={() => setWater(i + 1)} style={styles.glassTap}>
+                  <Text style={[styles.glassIcon, { opacity: i < water ? 1 : 0.3 }]}>💧</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.waterBarBg}>
+              <LinearGradient
+                colors={COLORS.gradAccent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={[styles.waterBarFill, { width: `${(water / 8) * 100}%` }]}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ── Weekly chart ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Weekly Progress</Text>
+          <View style={styles.card}>
+            <View style={styles.weekRow}>
+              {WEEKLY.map(w => (
+                <View key={w.day} style={styles.weekCol}>
+                  <View style={styles.weekBarWrap}>
+                    <LinearGradient
+                      colors={w.pct >= 80 ? COLORS.gradAccent : w.pct >= 50 ? COLORS.gradPrimary : [COLORS.border, COLORS.border]}
+                      style={[styles.weekBar, { height: `${w.pct}%` }]}
+                    />
+                  </View>
+                  <Text style={styles.weekDay}>{w.day}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Workouts ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Workouts</Text>
+            <Text style={styles.seeAll}>{doneCount}/{workouts.length} done</Text>
+          </View>
+          {workouts.map(w => (
+            <TouchableOpacity
+              key={w.id}
+              style={[styles.workoutCard, w.done && styles.workoutCardDone]}
+              onPress={() => toggleWorkout(w.id)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient colors={w.done ? [COLORS.border, COLORS.border] : w.colors}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.workoutIconBox}>
+                <Text style={styles.workoutIcon}>{w.done ? '✅' : w.icon}</Text>
+              </LinearGradient>
+              <View style={styles.workoutInfo}>
+                <Text style={[styles.workoutName, w.done && styles.workoutDoneText]}>{w.name}</Text>
+                <Text style={styles.workoutMeta}>⏱ {w.duration}  ·  🔥 {w.calories} kcal  ·  {w.type}</Text>
+              </View>
+              <View style={[styles.workoutCheck, { backgroundColor: w.done ? COLORS.success : COLORS.border }]}>
+                <Text style={styles.workoutCheckTxt}>{w.done ? '✓' : '○'}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  px: { paddingHorizontal: SPACING.lg },
 
-  // Header
-  headerContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md },
+  pageTitle: { fontSize: FONT.h1, fontWeight: '700', color: COLORS.textPrimary },
+  pageSub: { fontSize: FONT.sm, color: COLORS.textSecondary },
+  bmiBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, ...SHADOW.sm },
+  bmiBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.sm },
 
-  // Section
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
-  },
+  bmiCard: { borderRadius: RADIUS.xl, padding: SPACING.xl, marginBottom: 4, ...SHADOW.md },
+  bmiTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textInverse, marginBottom: SPACING.lg },
+  bmiInputs: { flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.lg },
+  bmiField: { flex: 1 },
+  bmiFieldLabel: { fontSize: FONT.xs, color: 'rgba(255,255,255,0.8)', marginBottom: 6 },
+  bmiInput: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: RADIUS.md, padding: SPACING.md },
+  bmiInputTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.md },
+  bmiResult: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  bmiVal: { fontSize: 48, fontWeight: '800', color: COLORS.textInverse },
+  bmiLabelPill: { borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 6 },
+  bmiLabelTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.sm },
 
-  // Metric Card
-  metricRow: {
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  metricCard: {
-    width: "48%",
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  metricTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  metricIcon: {
-    fontSize: 20,
-    marginRight: 6,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: COLORS.lightText,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  metricProgress: {
-    height: 6,
-    backgroundColor: COLORS.border,
-    borderRadius: 3,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  metricProgressBar: {
-    height: "100%",
-    backgroundColor: COLORS.success,
-  },
-  metricGoal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  metricGoalText: {
-    fontSize: 11,
-    color: COLORS.lightText,
-  },
-  metricUnit: {
-    fontSize: 11,
-    color: COLORS.lightText,
-  },
+  section: { paddingHorizontal: SPACING.lg, marginTop: SPACING.xxl },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+  sectionTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.md },
+  seeAll: { fontSize: FONT.sm, color: COLORS.primary, fontWeight: '700' },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.sm },
 
-  // Water Intake
-  waterCount: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  waterContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  waterProgress: {
-    height: 12,
-    backgroundColor: COLORS.border,
-    borderRadius: 6,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  waterProgressBar: {
-    height: "100%",
-    backgroundColor: COLORS.info,
-  },
-  addWaterButton: {
-    backgroundColor: COLORS.info,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  addWaterText: {
-    color: COLORS.white,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  waterLog: {
-    marginTop: 12,
-  },
-  waterItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  waterIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  waterItemContent: {
-    flex: 1,
-  },
-  waterTime: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginBottom: 2,
-  },
-  waterCupsText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
+  statCard: { width: '47%', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, alignItems: 'center', ...SHADOW.sm },
+  statIcon: { fontSize: 26, marginBottom: 6 },
+  statVal: { fontSize: FONT.xl, fontWeight: '800' },
+  statTarget: { fontSize: FONT.xs, color: COLORS.textMuted },
+  statLabel: { fontSize: FONT.xs, color: COLORS.textSecondary, marginTop: 4, marginBottom: 8 },
+  statBarBg: { width: '100%', height: 5, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  statBarFill: { height: '100%', borderRadius: 3 },
 
-  // Sleep Card
-  sleepCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sleepLeft: {
-    marginRight: 12,
-  },
-  sleepIcon: {
-    fontSize: 28,
-  },
-  sleepContent: {
-    flex: 1,
-  },
-  sleepDate: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginBottom: 2,
-  },
-  sleepHours: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  sleepQuality: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginTop: 2,
-  },
-  sleepBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sleepBadgeText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  waterCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.sm },
+  glassRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.md },
+  glassTap: { padding: 4 },
+  glassIcon: { fontSize: 26 },
+  waterBarBg: { height: 8, backgroundColor: COLORS.border, borderRadius: 4, overflow: 'hidden' },
+  waterBarFill: { height: '100%', borderRadius: 4 },
 
-  // Log Activity Button
-  logActivityButton: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  logActivityIcon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  logActivityTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  logActivitySubtitle: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginTop: 2,
-  },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between', height: 100, alignItems: 'flex-end' },
+  weekCol: { alignItems: 'center', flex: 1 },
+  weekBarWrap: { width: 14, height: 80, backgroundColor: COLORS.border, borderRadius: 7, overflow: 'hidden', justifyContent: 'flex-end' },
+  weekBar: { width: '100%', borderRadius: 7 },
+  weekDay: { fontSize: 9, color: COLORS.textMuted, marginTop: 4 },
 
-  // Activity Card
-  activityCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  activityIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: COLORS.background,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  activityCardIcon: {
-    fontSize: 28,
-  },
-  activityBody: {
-    flex: 1,
-  },
-  activityName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  activityDate: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  activityDetails: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  activityDetail: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 12,
-    marginBottom: 4,
-  },
-  activityDetailIcon: {
-    fontSize: 12,
-    marginRight: 4,
-  },
-  activityDetailText: {
-    fontSize: 11,
-    color: COLORS.lightText,
-  },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "90%",
-    paddingTop: 20,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.background,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalCloseIcon: {
-    fontSize: 18,
-    color: COLORS.text,
-  },
-  modalBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  modalSectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-
-  // Activity Type Selection
-  activityTypeRow: {
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  activityTypeCard: {
-    width: "23%",
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  activityTypeCardSelected: {
-    borderColor: COLORS.primary,
-  },
-  activityTypeGradient: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  activityTypeIcon: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  activityTypeName: {
-    fontSize: 10,
-    color: COLORS.white,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  // Form Inputs
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: COLORS.text,
-    backgroundColor: COLORS.background,
-  },
-
-  // Modal Buttons
-  modalButtonContainer: {
-    flexDirection: "row",
-    marginTop: 20,
-    marginBottom: 20,
-    gap: 10,
-  },
-  modalCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: "center",
-  },
-  modalCancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  modalSaveButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-  },
-  modalSaveText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.white,
-  },
-
-  // Bottom Padding
-  bottomPadding: {
-    height: 20,
-  },
+  workoutCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', ...SHADOW.sm },
+  workoutCardDone: { opacity: 0.7 },
+  workoutIconBox: { width: 46, height: 46, borderRadius: RADIUS.md, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
+  workoutIcon: { fontSize: 22 },
+  workoutInfo: { flex: 1 },
+  workoutName: { fontSize: FONT.base, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 3 },
+  workoutDoneText: { textDecorationLine: 'line-through', color: COLORS.textMuted },
+  workoutMeta: { fontSize: FONT.xs, color: COLORS.textSecondary },
+  workoutCheck: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  workoutCheckTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.sm },
 });

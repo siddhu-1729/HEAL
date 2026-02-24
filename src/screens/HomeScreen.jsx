@@ -1,521 +1,238 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  Image,
-  FlatList,
-} from "react-native";
-import LinearGradient from "react-native-linear-gradient";
-
-const COLORS = {
-  primary: "#2196F3",
-  secondary: "#1976D2",
-  accent: "#FF6B6B",
-  success: "#4CAF50",
-  warning: "#FFC107",
-  background: "#F5F7FA",
-  white: "#FFFFFF",
-  text: "#333333",
-  lightText: "#666666",
-  border: "#E0E0E0",
-};
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, SafeAreaView, StatusBar, FlatList,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 
 const QUICK_ACTIONS = [
-  {
-    id: 1,
-    title: "Schedule",
-    subtitle: "Appointment",
-    icon: "📅",
-    color: ["#667eea", "#764ba2"],
-  },
-  {
-    id: 2,
-    title: "Medical",
-    subtitle: "Records",
-    icon: "📋",
-    color: ["#f093fb", "#f5576c"],
-  },
-  {
-    id: 3,
-    title: "Messages",
-    subtitle: "Doctor",
-    icon: "💬",
-    color: ["#4facfe", "#00f2fe"],
-  },
-  {
-    id: 4,
-    title: "Prescriptions",
-    subtitle: "Active",
-    icon: "💊",
-    color: ["#43e97b", "#38f9d7"],
-  },
+  { id: 1, title: 'AI Scan', subtitle: 'Upload & Analyse', icon: '🔬', color: COLORS.gradBrain },
+  { id: 2, title: 'Records', subtitle: 'Medical History', icon: '📋', color: COLORS.gradPink },
+  { id: 3, title: 'AI Assistant', subtitle: 'Ask HealVerse', icon: '🤖', color: COLORS.gradAccent },
+  { id: 4, title: 'Scripts', subtitle: 'Prescriptions', icon: '💊', color: COLORS.gradSuccess },
 ];
 
 const HEALTH_METRICS = [
-  { label: "Heart Rate", value: "72", unit: "bpm", icon: "❤️" },
-  { label: "Blood Pressure", value: "120/80", unit: "mmHg", icon: "📊" },
-  { label: "Temperature", value: "98.6", unit: "°F", icon: "🌡️" },
+  { label: 'Heart Rate', value: '72', unit: 'bpm', icon: '❤️', color: COLORS.danger },
+  { label: 'BP', value: '120/80', unit: 'mmHg', icon: '📊', color: COLORS.primary },
+  { label: 'Temp', value: '98.6', unit: '°F', icon: '🌡️', color: COLORS.warning },
 ];
 
 const UPCOMING_APPOINTMENTS = [
-  {
-    id: 1,
-    doctorName: "Dr. Emily Johnson",
-    specialty: "Cardiologist",
-    date: "Today",
-    time: "2:30 PM",
-  },
-  {
-    id: 2,
-    doctorName: "Dr. Michael Chen",
-    specialty: "General Practitioner",
-    date: "Tomorrow",
-    time: "10:00 AM",
-  },
+  { id: 1, doctorName: 'AI Brain Scan Analysis', specialty: 'Neuro-AI Module', date: 'Today', time: '2:30 PM', initials: '🧠' },
+  { id: 2, doctorName: 'AI Bone Density Report', specialty: 'Ortho-AI Module', date: 'Tomorrow', time: '10:00 AM', initials: '🦴' },
 ];
 
-export default function HomeScreen({navigation}) {
-  const [userName] = useState("Siddhu");
+export default function HomeScreen({ navigation }) {
+  const [userName] = useState('User');
 
-  const handleQuickAction = (actionId) => {
-    console.log(`Navigating to action: ${actionId}`);
+  const handleQuickAction = (id) => {
+    if (id === 1) navigation.navigate('Upload');
+    else if (id === 2) navigation.navigate('History');
+    else if (id === 3) navigation.navigate('AdviceCaution');
+    else if (id === 4) navigation.navigate('ScriptAnalyzer');
   };
 
-  const renderQuickActionCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => handleQuickAction(item.id)}
-      style={styles.actionCard}
-    >
-      <LinearGradient
-        colors={item.color}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.actionGradient}
-      >
-        <Text style={styles.actionIcon}>{item.icon}</Text>
+  const renderQuickAction = ({ item }) => (
+    <TouchableOpacity style={styles.actionCard} onPress={() => handleQuickAction(item.id)} activeOpacity={0.8}>
+      <LinearGradient colors={item.color} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionGradient}>
+        <Text style={styles.actionEmoji}>{item.icon}</Text>
         <Text style={styles.actionTitle}>{item.title}</Text>
-        <Text style={styles.actionSubtitle}>{item.subtitle}</Text>
+        <Text style={styles.actionSub}>{item.subtitle}</Text>
       </LinearGradient>
     </TouchableOpacity>
   );
 
-  const renderMetricCard = ({ item }) => (
+  const renderMetric = ({ item }) => (
     <View style={styles.metricCard}>
-      <Text style={styles.metricIcon}>{item.icon}</Text>
+      <Text style={styles.metricEmoji}>{item.icon}</Text>
       <Text style={styles.metricLabel}>{item.label}</Text>
-      <View style={styles.metricValueContainer}>
-        <Text style={styles.metricValue}>{item.value}</Text>
-        <Text style={styles.metricUnit}>{item.unit}</Text>
+      <View style={styles.metricValRow}>
+        <Text style={[styles.metricVal, { color: item.color }]}>{item.value}</Text>
       </View>
+      <Text style={styles.metricUnit}>{item.unit}</Text>
     </View>
   );
 
-  const renderAppointmentItem = ({ item }) => (
-    <TouchableOpacity style={styles.appointmentCard}>
-      <View style={styles.appointmentLeft}>
-        <View style={styles.appointmentDateBadge}>
-          <Text style={styles.appointmentDateText}>
-            {item.date === "Today" ? "T" : "T+1"}
-          </Text>
+  const renderAppointment = ({ item }) => (
+    <TouchableOpacity style={styles.apptCard} activeOpacity={0.8}>
+      <View style={[styles.apptAvatar, { backgroundColor: COLORS.primaryLight }]}>
+        <Text style={styles.apptInitials}>{item.initials}</Text>
+      </View>
+      <View style={styles.apptContent}>
+        <Text style={styles.apptName}>{item.doctorName}</Text>
+        <Text style={styles.apptSpec}>{item.specialty}</Text>
+        <View style={styles.apptTimePill}>
+          <Text style={styles.apptTimeText}>🕐 {item.date} · {item.time}</Text>
         </View>
       </View>
-      <View style={styles.appointmentContent}>
-        <Text style={styles.appointmentDoctor}>{item.doctorName}</Text>
-        <Text style={styles.appointmentSpecialty}>{item.specialty}</Text>
-        <View style={styles.appointmentTime}>
-          <Text style={styles.appointmentTimeText}>🕐 {item.time}</Text>
-        </View>
-      </View>
-      <View style={styles.appointmentRight}>
-        <Text style={styles.appointmentArrow}>›</Text>
-      </View>
+      <Text style={styles.apptChevron}>›</Text>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollView}
-      >
-        {/* Header Section */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greeting}>Hello, {userName} 👋</Text>
-              <Text style={styles.date}>
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.profileButton}>
-              <Text style={styles.profileIcon}>👤</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+
+        {/* ── Top bar ── */}
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.greeting}>Hello, {userName} 👋</Text>
+            <Text style={styles.dateText}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+          <View style={styles.topBarRight}>
+            <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
+              <Text style={styles.bellIcon}>🔔</Text>
+              <View style={styles.bellBadge}><Text style={styles.bellBadgeTxt}>2</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
+              <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
+                <Text style={styles.avatarText}>U</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Health Status Card */}
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.secondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statusCard}
-          >
-            <View style={styles.statusContent}>
-              <View>
-                <Text style={styles.statusLabel}>Your Health Status</Text>
-                <Text style={styles.statusValue}>Excellent 🎉</Text>
-              </View>
-              <TouchableOpacity style={styles.statusButton}>
-                <Text style={styles.statusButtonText}>View Details →</Text>
-              </TouchableOpacity>
+        {/* ── Health status banner ── */}
+        <View style={styles.px}>
+          <LinearGradient colors={COLORS.gradPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.statusBanner}>
+            <View style={styles.statusLeft}>
+              <Text style={styles.statusLabel}>Your Health Status</Text>
+              <Text style={styles.statusValue}>Excellent 🎉</Text>
+              <Text style={styles.statusSub}>All vitals in normal range</Text>
             </View>
+            <TouchableOpacity style={styles.statusBtn}>
+              <Text style={styles.statusBtnText}>View →</Text>
+            </TouchableOpacity>
           </LinearGradient>
         </View>
 
-        {/* Quick Actions Section */}
+        {/* ── Quick actions ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <FlatList
-            data={QUICK_ACTIONS}
-            renderItem={renderQuickActionCard}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
-            columnWrapperStyle={styles.actionRow}
-            scrollEnabled={false}
+            data={QUICK_ACTIONS} renderItem={renderQuickAction}
+            keyExtractor={i => i.id.toString()} numColumns={2}
+            columnWrapperStyle={styles.actionRow} scrollEnabled={false}
           />
         </View>
 
-        {/* Health Metrics Section */}
-        <View style={styles.section}> 
-          <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Health Metrics</Text>
-          <TouchableOpacity onPress={()=>navigation.navigate('fitness')}>
-              <Text style={styles.seeAllText}>See all →</Text>
-            </TouchableOpacity>
-            </View> 
-          <FlatList
-            data={HEALTH_METRICS}
-            renderItem={renderMetricCard}
-            keyExtractor={(item) => item.label}
-            numColumns={3}
-            columnWrapperStyle={styles.metricRow}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Upcoming Appointments Section */}
+        {/* ── Health metrics ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText} >See all →</Text>
+            <Text style={styles.sectionTitle}>Health Metrics</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('fitness')}>
+              <Text style={styles.seeAll}>See all →</Text>
             </TouchableOpacity>
           </View>
           <FlatList
-            data={UPCOMING_APPOINTMENTS}
-            renderItem={renderAppointmentItem}
-            keyExtractor={(item) => item.id.toString()}
-            scrollEnabled={false}
+            data={HEALTH_METRICS} renderItem={renderMetric}
+            keyExtractor={i => i.label} numColumns={3}
+            columnWrapperStyle={styles.metricRow} scrollEnabled={false}
           />
         </View>
 
-        {/* Emergency Button */}
-        <View style={styles.emergencySection}>
-          <TouchableOpacity style={styles.emergencyButton}>
+        {/* ── Upcoming appointments ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+            <TouchableOpacity><Text style={styles.seeAll}>See all →</Text></TouchableOpacity>
+          </View>
+          <FlatList
+            data={UPCOMING_APPOINTMENTS} renderItem={renderAppointment}
+            keyExtractor={i => i.id.toString()} scrollEnabled={false}
+          />
+        </View>
+
+        {/* ── Emergency ── */}
+        <View style={styles.px}>
+          <TouchableOpacity style={styles.emergencyBtn} activeOpacity={0.85}>
             <Text style={styles.emergencyIcon}>🚨</Text>
             <Text style={styles.emergencyText}>Emergency Contact</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Bottom Padding */}
-        <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  px: { paddingHorizontal: SPACING.lg },
 
-  // Header styles
-  headerContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+  // Top bar
+  topBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md,
   },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  date: {
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
-  profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  profileIcon: {
-    fontSize: 24,
-  },
+  greeting: { fontSize: FONT.h1, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 2 },
+  dateText: { fontSize: FONT.sm, color: COLORS.textSecondary },
+  avatarBtn: { borderRadius: RADIUS.full, overflow: 'hidden', ...SHADOW.md },
+  avatarGrad: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.lg },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center', ...SHADOW.sm, position: 'relative' },
+  bellIcon: { fontSize: 18 },
+  bellBadge: { position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.danger, justifyContent: 'center', alignItems: 'center' },
+  bellBadgeTxt: { color: COLORS.textInverse, fontSize: 9, fontWeight: '800' },
 
-  // Status card
-  statusCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-  },
-  statusContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  statusLabel: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginBottom: 6,
-  },
-  statusValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.white,
-  },
-  statusButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  statusButtonText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  // Status banner
+  statusBanner: { borderRadius: RADIUS.xl, padding: SPACING.lg, flexDirection: 'row', alignItems: 'center', marginBottom: 4, ...SHADOW.md },
+  statusLeft: { flex: 1 },
+  statusLabel: { fontSize: FONT.xs, color: 'rgba(255,255,255,0.8)', marginBottom: 4, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  statusValue: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.textInverse, marginBottom: 4 },
+  statusSub: { fontSize: FONT.sm, color: 'rgba(255,255,255,0.75)' },
+  statusBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  statusBtnText: { color: COLORS.textInverse, fontSize: FONT.sm, fontWeight: '700' },
 
-  // Section styles
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  seeAllText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: "600",
-  },
+  // Section
+  section: { paddingHorizontal: SPACING.lg, marginTop: SPACING.xxl },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+  sectionTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.md },
+  seeAll: { fontSize: FONT.sm, color: COLORS.primary, fontWeight: '700' },
 
-  // Quick action styles
-  actionRow: {
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  actionCard: {
-    width: "48%",
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  actionGradient: {
-    paddingVertical: 20,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 120,
-  },
-  actionIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  actionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.white,
-  },
-  actionSubtitle: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 2,
-  },
+  // Quick actions
+  actionRow: { justifyContent: 'space-between', marginBottom: SPACING.md },
+  actionCard: { width: '48%', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.md },
+  actionGradient: { paddingVertical: SPACING.xl, paddingHorizontal: SPACING.md, alignItems: 'center', minHeight: 120, justifyContent: 'center' },
+  actionEmoji: { fontSize: 30, marginBottom: 8 },
+  actionTitle: { fontSize: FONT.md, fontWeight: '700', color: COLORS.textInverse },
+  actionSub: { fontSize: FONT.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
-  // Metric card styles
-  metricRow: {
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  metricCard: {
-    width: "31%",
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  metricIcon: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: COLORS.lightText,
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  metricValueContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  metricUnit: {
-    fontSize: 10,
-    color: COLORS.lightText,
-    marginLeft: 2,
-  },
+  // Metrics
+  metricRow: { justifyContent: 'space-between', marginBottom: SPACING.md },
+  metricCard: { width: '31%', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, alignItems: 'center', ...SHADOW.sm },
+  metricEmoji: { fontSize: 24, marginBottom: 6 },
+  metricLabel: { fontSize: FONT.xs, color: COLORS.textMuted, textAlign: 'center', marginBottom: 4 },
+  metricValRow: { flexDirection: 'row', alignItems: 'baseline' },
+  metricVal: { fontSize: FONT.lg, fontWeight: '700' },
+  metricUnit: { fontSize: 9, color: COLORS.textMuted, marginTop: 2 },
 
-  // Appointment styles
-  appointmentCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+  // Appointments
+  apptCard: {
+    backgroundColor: COLORS.surface, borderRadius: RADIUS.lg,
+    padding: SPACING.md, marginBottom: SPACING.md, flexDirection: 'row',
+    alignItems: 'center', ...SHADOW.sm,
   },
-  appointmentLeft: {
-    marginRight: 12,
-  },
-  appointmentDateBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  appointmentDateText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  appointmentContent: {
-    flex: 1,
-  },
-  appointmentDoctor: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  appointmentSpecialty: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    marginBottom: 6,
-  },
-  appointmentTime: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: COLORS.background,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  appointmentTimeText: {
-    fontSize: 11,
-    color: COLORS.primary,
-    fontWeight: "600",
-  },
-  appointmentRight: {
-    marginLeft: 12,
-  },
-  appointmentArrow: {
-    fontSize: 18,
-    color: COLORS.lightText,
-  },
+  apptAvatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
+  apptInitials: { fontSize: FONT.md, fontWeight: '700', color: COLORS.primary },
+  apptContent: { flex: 1 },
+  apptName: { fontSize: FONT.base, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 2 },
+  apptSpec: { fontSize: FONT.xs, color: COLORS.textSecondary, marginBottom: 6 },
+  apptTimePill: { backgroundColor: COLORS.primaryLight, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  apptTimeText: { fontSize: FONT.xs, color: COLORS.primary, fontWeight: '600' },
+  apptChevron: { fontSize: FONT.xl, color: COLORS.textMuted },
 
-  // Emergency section
-  emergencySection: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
+  // Emergency
+  emergencyBtn: {
+    marginTop: SPACING.xxl, backgroundColor: COLORS.danger, borderRadius: RADIUS.lg,
+    padding: SPACING.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', ...SHADOW.md,
   },
-  emergencyButton: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emergencyIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  emergencyText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.white,
-  },
-
-  // Bottom padding
-  bottomPadding: {
-    height: 20,
-  },
+  emergencyIcon: { fontSize: FONT.xl, marginRight: SPACING.sm },
+  emergencyText: { fontSize: FONT.md, fontWeight: '700', color: COLORS.textInverse },
 });
-
