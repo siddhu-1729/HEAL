@@ -1,8 +1,22 @@
 import React, { useState } from 'react';
 import {
+<<<<<<< Updated upstream
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
   ScrollView, Alert,
+=======
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  Image,
+  AsyncStorage,
+>>>>>>> Stashed changes
 } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import scheduleDailyNotification from '../services/notification';
@@ -18,6 +32,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const validate = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -29,12 +44,64 @@ export default function LoginScreen({ navigation }) {
     return true;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!validate()) return;
+    
     setLoading(true);
+<<<<<<< Updated upstream
     setTimeout(() => setLoading(false), 900);
     navigation.navigate('MainTabs');
     scheduleDailyNotification();
+=======
+    setLoginError('');
+
+    try {
+      // Send login request to FastAPI backend
+      const response = await fetch('http://192.168.1.13:8000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: email,
+          password: password,
+        }).toString(),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoading(false);
+        const errorMessage = data.detail || 'Invalid email or password';
+        setLoginError(errorMessage);
+        Alert.alert('Login Failed', errorMessage);
+        return;
+      }
+
+      // Extract JWT token from response
+      const token = data.access_token;
+      
+      // Store token in AsyncStorage for subsequent API calls
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userEmail', email);
+
+      setLoading(false);
+      
+      // Clear form
+      setEmail('');
+      setPassword('');
+      
+      // Navigate to Home
+      navigation.navigate('Home');
+      scheduleDailyNotification();
+    } catch (error) {
+      setLoading(false);
+      const errorMessage = error.message || 'An error occurred during login. Please try again.';
+      setLoginError(errorMessage);
+      Alert.alert('Error', errorMessage);
+      console.error('Login error:', error);
+    }
+>>>>>>> Stashed changes
   };
 
   const handleGoogleSignIn = async () => {
@@ -68,12 +135,22 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.tagline}>AI-Powered Health Intelligence</Text>
         </View>
 
+<<<<<<< Updated upstream
         {/* Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Welcome Back</Text>
           <Text style={styles.cardSub}>Sign in to continue</Text>
 
           {/* Email */}
+=======
+        <View style={styles.form}>
+          {loginError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{loginError}</Text>
+            </View>
+          )}
+          
+>>>>>>> Stashed changes
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputWrap}>
             <Text style={styles.inputPrefix}>✉️</Text>
@@ -130,8 +207,74 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+<<<<<<< Updated upstream
   root: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg, paddingBottom: SPACING.xxxl },
+=======
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  scroll: { padding: 24, flexGrow: 1, justifyContent: 'center' },
+  brand: { alignItems: 'center', marginBottom: 18 },
+  logo: { width: 88, height: 88, marginBottom: 12, backgroundColor: 'transparent' },
+  title: { fontSize: 28, fontWeight: '700', color: '#0F1724' },
+  subtitle: { fontSize: 14, color: '#52606D', marginTop: 6 },
+  form: { marginTop: 12 },
+  label: { fontSize: 13, color: '#334155', marginBottom: 6 },
+  input: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E6EDF3',
+    color: '#0F1724',
+  },
+  passwordRow: { flexDirection: 'row', alignItems: 'center' },
+  showBtn: { paddingHorizontal: 12, justifyContent: 'center' },
+  showText: { color: '#2563EB', fontWeight: '600' },
+  forgotRow: { alignItems: 'flex-end', marginTop: 8 },
+  forgot: { color: '#2563EB', fontSize: 13 },
+  primary: {
+    marginTop: 18,
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  primaryText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  divider: { flex: 1, height: 1, backgroundColor: '#E6EDF3' },
+  dividerText: { marginHorizontal: 12, color: '#94A3B8', fontSize: 12 },
+  socialRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
+  socialBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E6EDF3',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginHorizontal: 6,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  socialText: { color: '#0F1724', fontWeight: '600' },
+  signupRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  signupText: { color: '#475569' },
+  signupLink: { color: '#2563EB', fontWeight: '600' },
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+});
+>>>>>>> Stashed changes
 
   brand: { alignItems: 'center', marginBottom: SPACING.xxl },
   logoBox: { width: 72, height: 72, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md, ...SHADOW.lg },
