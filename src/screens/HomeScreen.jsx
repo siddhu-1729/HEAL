@@ -1,38 +1,12 @@
 import React, { useState } from 'react';
 import {
-<<<<<<< Updated upstream
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, FlatList,
+  StyleSheet, SafeAreaView, StatusBar, FlatList, Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import scheduleDailyNotification from '../services/notification';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
-=======
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  Image,
-  FlatList,
-} from "react-native";
-import LinearGradient from "react-native-linear-gradient";
-import scheduleDailyNotification from "../services/notification";
 
-const COLORS = {
-  primary: "#2196F3",
-  secondary: "#1976D2",
-  accent: "#FF6B6B",
-  success: "#4CAF50",
-  warning: "#FFC107",
-  background: "#F5F7FA",
-  white: "#FFFFFF",
-  text: "#333333",
-  lightText: "#666666",
-  border: "#E0E0E0",
-};
->>>>>>> Stashed changes
 
 const QUICK_ACTIONS = [
   { id: 1, title: 'AI Scan', subtitle: 'Upload & Analyse', icon: '🔬', color: COLORS.gradBrain },
@@ -62,29 +36,10 @@ export default function HomeScreen({ navigation }) {
     else if (id === 4) navigation.navigate('ScriptAnalyzer');
   };
 
-<<<<<<< Updated upstream
   const renderQuickAction = ({ item }) => (
     <TouchableOpacity style={styles.actionCard} onPress={() => handleQuickAction(item.id)} activeOpacity={0.8}>
       <LinearGradient colors={item.color} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionGradient}>
         <Text style={styles.actionEmoji}>{item.icon}</Text>
-=======
-useEffect(()=>{
-  scheduleDailyNotification();
-},[]);
-
-  const renderQuickActionCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => handleQuickAction(item.id)}
-      style={styles.actionCard}
-    >
-      <LinearGradient
-        colors={item.color}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.actionGradient}
-      >
-        <Text style={styles.actionIcon}>{item.icon}</Text>
->>>>>>> Stashed changes
         <Text style={styles.actionTitle}>{item.title}</Text>
         <Text style={styles.actionSub}>{item.subtitle}</Text>
       </LinearGradient>

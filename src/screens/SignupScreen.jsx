@@ -12,19 +12,18 @@ const STEPS = ['Personal', 'Medical', 'Security'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GENDERS = ['Male', 'Female', 'Other'];
 
-// ─────────────────────────────────────────────────────────────────
-// InputField is defined OUTSIDE SignupScreen to prevent re-mounting
-// on every keystroke (which caused single-letter input bug)
-// ─────────────────────────────────────────────────────────────────
 const InputField = ({
   icon, label, value, onChange, placeholder,
   keyboard = 'default', secure = false, onSecureToggle,
-  editable = true, onPress,
+  editable = true, onPress, required = false, error = '',
 }) => (
   <View style={styles.fieldWrap}>
-    <Text style={styles.label}>{label}</Text>
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{label}</Text>
+      {required && <Text style={styles.requiredStar}>*</Text>}
+    </View>
     <TouchableOpacity
-      style={styles.inputRow}
+      style={[styles.inputRow, error && styles.inputRowError]}
       activeOpacity={onPress ? 0.7 : 1}
       onPress={onPress}
     >
@@ -50,14 +49,17 @@ const InputField = ({
         <Text style={styles.inputSuffix}>📅</Text>
       )}
     </TouchableOpacity>
+    {error && <Text style={styles.errorText}>{error}</Text>}
   </View>
 );
 
-// Selector also outside to prevent remount
-const Selector = ({ label, options, selected, onSelect }) => (
+const Selector = ({ label, options, selected, onSelect, required = false, error = '' }) => (
   <View style={styles.fieldWrap}>
-    <Text style={styles.label}>{label}</Text>
-    <View style={styles.chipRow}>
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{label}</Text>
+      {required && <Text style={styles.requiredStar}>*</Text>}
+    </View>
+    <View style={[styles.chipRow, error && styles.chipRowError]}>
       {options.map(o => (
         <TouchableOpacity
           key={o}
@@ -68,6 +70,7 @@ const Selector = ({ label, options, selected, onSelect }) => (
         </TouchableOpacity>
       ))}
     </View>
+    {error && <Text style={styles.errorText}>{error}</Text>}
   </View>
 );
 
@@ -75,30 +78,34 @@ export default function SignupScreen({ navigation }) {
   const [step, setStep] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
 
-  // Step 1
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dob: null,
+   
+    gender: '',
+    bloodGroup: '',
+    // weight: '',
+    // height: '',
+    // conditions: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    password: '',
+    confirm: '',
+    secureP: true,
+    secureC: true,
+    loading: false,
+    error: '',
+    errors: {}, // Track field-specific errors
+  });
 
-  // Step 2
-  const [dob, setDob] = useState(null);          // Date object
-  const [showDatePkr, setShowDatePkr] = useState(false);
-  const [gender, setGender] = useState('');
-  const [bloodGroup, setBloodGroup] = useState('');
-  const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('');
-  const [conditions, setConditions] = useState('');
-
-  // Step 3
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [secureP, setSecureP] = useState(true);
-  const [secureC, setSecureC] = useState(true);
-
-  const dobDisplay = dob
-    ? dob.toLocaleDateString('en-GB') // DD/MM/YYYY
-    : '';
+  const dobDisplay = formData.dob ? formData.dob.toLocaleDateString('en-GB') : '';
 
   const goTo = (next) => {
     Animated.timing(progress, {
@@ -109,78 +116,71 @@ export default function SignupScreen({ navigation }) {
   };
 
   const validateStep = () => {
+    const newErrors = {};
+
     if (step === 0) {
-      if (!firstName.trim()) { Alert.alert('Required', 'First name is required.'); return false; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { Alert.alert('Invalid', 'Enter a valid email.'); return false; }
+      if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) newErrors.email = 'Enter a valid email';
+      if (formData.phone.length < 10) newErrors.phone = 'Phone must be at least 10 digits';
     }
     if (step === 1) {
-      if (!dob) { Alert.alert('Required', 'Please select your date of birth.'); return false; }
-      if (!gender) { Alert.alert('Required', 'Please select your gender.'); return false; }
-      if (!bloodGroup) { Alert.alert('Required', 'Please select blood group.'); return false; }
+      if (!formData.dob) newErrors.dob = 'Please select your date of birth';
+      if (!formData.gender) newErrors.gender = 'Please select your gender';
+      if (!formData.bloodGroup) newErrors.bloodGroup = 'Please select blood group';
+      if (!formData.address.trim()) newErrors.address = 'Address is required';
+      if (!formData.city.trim()) newErrors.city = 'City is required';
+      if (!formData.state.trim()) newErrors.state = 'State is required';
+      if (!formData.zipCode.trim()) newErrors.zipCode = 'ZIP code is required';
     }
     if (step === 2) {
-      if (password.length < 6) { Alert.alert('Weak', 'Password must be 6+ characters.'); return false; }
-      if (password !== confirm) { Alert.alert('Mismatch', 'Passwords do not match.'); return false; }
+      if (!formData.emergencyContactName.trim()) newErrors.emergencyContactName = 'Emergency contact name is required';
+      if (formData.emergencyContactPhone.length < 10) newErrors.emergencyContactPhone = 'Phone must be at least 10 digits';
+      if (formData.password.length < 6) newErrors.password = 'Password must be 6+ characters';
+      if (formData.password !== formData.confirm) newErrors.confirm = 'Passwords do not match';
     }
-    return true;
+
+    setFormData(prev => ({ ...prev, errors: newErrors }));
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
-    if (!validateStep()) return;
-    if (step < STEPS.length - 1) goTo(step + 1);
-    else { Alert.alert('Success! 🎉', 'Account created!'); navigation.navigate('MainTabs'); }
-  };
-
-<<<<<<< Updated upstream
-  const barWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
-=======
-  const handleBack = () => {
-    setCurrentStep(currentStep - 1);
-    fadeAnim.setValue(0);
-    slideAnim.setValue(30);
-  };
-
-  const calculateAge = (dateString) => {
+  const calculateAge = (dateObj) => {
     const today = new Date();
-    const birthDate = new Date(dateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
+    let age = today.getFullYear() - dateObj.getFullYear();
+    const monthDiff = today.getMonth() - dateObj.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) age--;
     return age;
   };
 
   const handleSignup = async () => {
-    if (!validateStep3()) return;
-
-    setIsLoading(true);
+    if (!validateStep()) return;
+    
+    setFormData(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Prepare data for backend API
-      const age = calculateAge(formData.dateOfBirth);
+      const age = calculateAge(formData.dob);
       const signupData = {
-        // name: `${formData.firstName} ${formData.lastName}`,
-        firstName: formData.firstName,
-        lastName:formData.lastName,
-        email: formData.email,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        dateOfBirth: formData.dob.toISOString().split('T')[0],
         age: age,
-        password: formData.password,
-        phone: formData.phone,
-        dateOfBirth: formData.dateOfBirth,
-        gender:formData.gender,
+        gender: formData.gender,
         bloodGroup: formData.bloodGroup,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        emergencyContactName: formData.emergencyContactName,
-        emergencyContactPhone: formData.emergencyContactPhone,
+        // weight: formData.weight || null,
+        // height: formData.height || null,
+        // conditions: formData.conditions || null,
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        zipCode: formData.zipCode.trim(),
+        emergencyContactName: formData.emergencyContactName.trim(),
+        emergencyContactPhone: formData.emergencyContactPhone.trim(),
+        password: formData.password,
       };
 
-      // Send data to FastAPI backend
+      console.log('Sending signup data:', signupData);
+
       const response = await fetch('http://192.168.1.13:8000/signup', {
         method: 'POST',
         headers: {
@@ -189,368 +189,35 @@ export default function SignupScreen({ navigation }) {
         body: JSON.stringify(signupData),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Signup failed');
+        throw new Error(data.detail || data.message || 'Signup failed');
       }
 
-      const result = await response.json();
-      console.log('Patient registered:', result);
-      
-      // Navigate to login screen on success
-      setIsLoading(false);
+      console.log('Signup successful:', data);
+      setFormData(prev => ({ ...prev, loading: false }));
+      Alert.alert('Success! 🎉', 'Account created successfully! Please login.');
       navigation.navigate('LoginScreen');
-    } catch (error) {
-      setIsLoading(false);
-      console.error('Signup error:', error);
-      // Show error message to user (you can add a toast notification here)
-      setErrors({
-        submit: error.message || 'An error occurred during signup. Please try again.',
-      });
+    } catch (err) {
+      const errorMsg = err.message || 'An error occurred during signup';
+      setFormData(prev => ({ ...prev, loading: false, error: errorMsg }));
+      Alert.alert('Signup Error', errorMsg);
+      console.error('Signup error:', err);
     }
   };
 
-  const renderGenderOptions = () => {
-    const genders = ['Male', 'Female', 'Other'];
-    return (
-      <View style={styles.optionsContainer}>
-        {genders.map((gender) => (
-          <TouchableOpacity
-            key={gender}
-            style={[
-              styles.optionButton,
-              selectedGender === gender && styles.optionButtonSelected,
-            ]}
-            onPress={() => {
-              setSelectedGender(gender);
-              updateFormData('gender', gender);
-            }}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                selectedGender === gender && styles.optionTextSelected,
-              ]}
-            >
-              {gender}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
+  const handleNext = () => {
+    if (!validateStep()) return;
+    if (step < STEPS.length - 1) goTo(step + 1);
+    else handleSignup();
   };
 
-  const renderBloodGroupOptions = () => {
-    const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-    return (
-      <View style={styles.bloodGroupContainer}>
-        {bloodGroups.map((group) => (
-          <TouchableOpacity
-            key={group}
-            style={[
-              styles.bloodGroupButton,
-              selectedBloodGroup === group && styles.bloodGroupButtonSelected,
-            ]}
-            onPress={() => {
-              setSelectedBloodGroup(group);
-              updateFormData('bloodGroup', group);
-            }}
-          >
-            <Text
-              style={[
-                styles.bloodGroupText,
-                selectedBloodGroup === group && styles.bloodGroupTextSelected,
-              ]}
-            >
-              {group}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
-
-  const renderProgressBar = () => {
-    return (
-      <View style={styles.progressContainer}>
-        {[1, 2, 3].map((step) => (
-          <View
-            key={step}
-            style={[
-              styles.progressDot,
-              currentStep >= step && styles.progressDotActive,
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
-
-  const renderStep1 = () => (
-    <Animated.View
-      style={[
-        styles.stepContainer,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.stepTitle}>Personal Information</Text>
-      <Text style={styles.stepSubtitle}>Let's get to know you better</Text>
-
-      <View style={styles.rowContainer}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>First Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="John"
-            placeholderTextColor="#9ca3af"
-            value={formData.firstName}
-            onChangeText={(text) => updateFormData('firstName', text)}
-          />
-          {errors.firstName && (
-            <Text style={styles.errorText}>{errors.firstName}</Text>
-          )}
-        </View>
-
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Last Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Doe"
-            placeholderTextColor="#9ca3af"
-            value={formData.lastName}
-            onChangeText={(text) => updateFormData('lastName', text)}
-          />
-          {errors.lastName && (
-            <Text style={styles.errorText}>{errors.lastName}</Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Email Address *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="john.doe@email.com"
-          placeholderTextColor="#9ca3af"
-          value={formData.email}
-          onChangeText={(text) => updateFormData('email', text)}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Phone Number *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="1234567890"
-          placeholderTextColor="#9ca3af"
-          value={formData.phone}
-          onChangeText={(text) => updateFormData('phone', text)}
-          keyboardType="phone-pad"
-          maxLength={10}
-        />
-        {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Date of Birth *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="DD/MM/YYYY"
-          placeholderTextColor="#9ca3af"
-          value={formData.dateOfBirth}
-          onChangeText={(text) => updateFormData('dateOfBirth', text)}
-          keyboardType="numeric"
-        />
-        {errors.dateOfBirth && (
-          <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Gender *</Text>
-        {renderGenderOptions()}
-        {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
-      </View>
-    </Animated.View>
-  );
-
-  const renderStep2 = () => (
-    <Animated.View
-      style={[
-        styles.stepContainer,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.stepTitle}>Medical & Address Details</Text>
-      <Text style={styles.stepSubtitle}>Help us serve you better</Text>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Blood Group *</Text>
-        {renderBloodGroupOptions()}
-        {errors.bloodGroup && (
-          <Text style={styles.errorText}>{errors.bloodGroup}</Text>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Address *</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Street address"
-          placeholderTextColor="#9ca3af"
-          value={formData.address}
-          onChangeText={(text) => updateFormData('address', text)}
-          multiline
-          numberOfLines={2}
-        />
-        {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
-      </View>
-
-      <View style={styles.rowContainer}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>City *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="City"
-            placeholderTextColor="#9ca3af"
-            value={formData.city}
-            onChangeText={(text) => updateFormData('city', text)}
-          />
-          {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
-        </View>
-
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>State *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="State"
-            placeholderTextColor="#9ca3af"
-            value={formData.state}
-            onChangeText={(text) => updateFormData('state', text)}
-          />
-          {errors.state && <Text style={styles.errorText}>{errors.state}</Text>}
-        </View>
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>ZIP Code *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="123456"
-          placeholderTextColor="#9ca3af"
-          value={formData.zipCode}
-          onChangeText={(text) => updateFormData('zipCode', text)}
-          keyboardType="numeric"
-          maxLength={6}
-        />
-        {errors.zipCode && <Text style={styles.errorText}>{errors.zipCode}</Text>}
-      </View>
-    </Animated.View>
-  );
-
-  const renderStep3 = () => (
-    <Animated.View
-      style={[
-        styles.stepContainer,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.stepTitle}>Emergency Contact & Security</Text>
-      <Text style={styles.stepSubtitle}>Almost there!</Text>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Emergency Contact Name *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Contact person name"
-          placeholderTextColor="#9ca3af"
-          value={formData.emergencyContactName}
-          onChangeText={(text) => updateFormData('emergencyContactName', text)}
-        />
-        {errors.emergencyContactName && (
-          <Text style={styles.errorText}>{errors.emergencyContactName}</Text>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Emergency Contact Phone *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="1234567890"
-          placeholderTextColor="#9ca3af"
-          value={formData.emergencyContactPhone}
-          onChangeText={(text) => updateFormData('emergencyContactPhone', text)}
-          keyboardType="phone-pad"
-          maxLength={10}
-        />
-        {errors.emergencyContactPhone && (
-          <Text style={styles.errorText}>{errors.emergencyContactPhone}</Text>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Password *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Create a strong password"
-          placeholderTextColor="#9ca3af"
-          value={formData.password}
-          onChangeText={(text) => updateFormData('password', text)}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-        {errors.password && (
-          <Text style={styles.errorText}>{errors.password}</Text>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={styles.label}>Confirm Password *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Re-enter password"
-          placeholderTextColor="#9ca3af"
-          value={formData.confirmPassword}
-          onChangeText={(text) => updateFormData('confirmPassword', text)}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-        {errors.confirmPassword && (
-          <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-        )}
-      </View>
-
-      <View style={styles.termsContainer}>
-        <Text style={styles.termsText}>
-          By signing up, you agree to our{' '}
-          <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-          <Text style={styles.termsLink}>Privacy Policy</Text>
-        </Text>
-      </View>
-    </Animated.View>
-  );
->>>>>>> Stashed changes
+  const barWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Brand */}
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.brand}>
           <View style={styles.logoBox}>
             <Text style={styles.logoTxt}>H+</Text>
@@ -559,84 +226,15 @@ export default function SignupScreen({ navigation }) {
           <Text style={styles.tagline}>Join HealVerse today</Text>
         </View>
 
-<<<<<<< Updated upstream
-        {/* Stepper */}
         <View style={styles.stepperWrap}>
           <View style={styles.stepperTrack}>
             <Animated.View style={[styles.stepperFill, { width: barWidth }]} />
-=======
-          {/* Progress Bar */}
-          {renderProgressBar()}
-
-          {/* Error Message */}
-          {errors.submit && (
-            <View style={styles.submitErrorContainer}>
-              <Text style={styles.submitErrorText}>{errors.submit}</Text>
-            </View>
-          )}
-
-          {/* Form Steps */}
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-
-          {/* Navigation Buttons */}
-          <View style={styles.buttonContainer}>
-            {currentStep > 1 && (
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={handleBack}
-              >
-                <Text style={styles.backButtonText}>Back</Text>
-              </TouchableOpacity>
-            )}
-
-            {currentStep < 3 ? (
-              <TouchableOpacity
-                style={[styles.nextButton, currentStep === 1 && styles.fullWidthButton]}
-                onPress={handleNext}
-              >
-                <LinearGradient
-                  colors={['#06b6d4', '#0891b2']}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.nextButtonText}>Next</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.nextButton, styles.fullWidthButton]}
-                onPress={handleSignup}
-                disabled={isLoading}
-              >
-                <LinearGradient
-                  colors={['#06b6d4', '#0891b2']}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <Text style={styles.nextButtonText}>Create Account</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
->>>>>>> Stashed changes
           </View>
           <View style={styles.stepCircles}>
             {STEPS.map((s, i) => (
               <View key={s} style={styles.stepItem}>
-                <LinearGradient
-                  colors={i <= step ? COLORS.gradPrimary : [COLORS.border, COLORS.border]}
-                  style={styles.stepCircle}
-                >
-                  <Text style={[styles.stepNum, { color: i <= step ? COLORS.textInverse : COLORS.textMuted }]}>
-                    {i < step ? '✓' : i + 1}
-                  </Text>
+                <LinearGradient colors={i <= step ? COLORS.gradPrimary : [COLORS.border, COLORS.border]} style={styles.stepCircle}>
+                  <Text style={[styles.stepNum, { color: i <= step ? COLORS.textInverse : COLORS.textMuted }]}>{i < step ? '✓' : i + 1}</Text>
                 </LinearGradient>
                 <Text style={[styles.stepLabel, { color: i <= step ? COLORS.primary : COLORS.textMuted }]}>{s}</Text>
               </View>
@@ -644,93 +242,78 @@ export default function SignupScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Card */}
         <View style={styles.card}>
-
-          {/* ── Step 1 — Personal ── */}
           {step === 0 && (
             <>
               <Text style={styles.stepTitle}>Personal Information</Text>
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <InputField icon="👤" label="First Name" value={firstName} onChange={setFirstName} placeholder="John" />
+                  <InputField icon="👤" label="First Name" value={formData.firstName} onChange={e => setFormData(prev => ({ ...prev, firstName: e }))} placeholder="John" required={true} error={formData.errors.firstName} />
                 </View>
                 <View style={{ width: SPACING.md }} />
                 <View style={{ flex: 1 }}>
-                  <InputField icon="👤" label="Last Name" value={lastName} onChange={setLastName} placeholder="Doe" />
+                  <InputField icon="👤" label="Last Name" value={formData.lastName} onChange={e => setFormData(prev => ({ ...prev, lastName: e }))} placeholder="Doe" />
                 </View>
               </View>
-              <InputField
-                icon="✉️" label="Email" value={email} onChange={setEmail}
-                placeholder="you@email.com" keyboard="email-address"
-              />
-              <InputField
-                icon="📞" label="Phone" value={phone} onChange={setPhone}
-                placeholder="+91 9876543210" keyboard="phone-pad"
-              />
+              <InputField icon="✉️" label="Email" value={formData.email} onChange={e => setFormData(prev => ({ ...prev, email: e }))} placeholder="you@email.com" keyboard="email-address" required={true} error={formData.errors.email} />
+              <InputField icon="📞" label="Phone" value={formData.phone} onChange={e => setFormData(prev => ({ ...prev, phone: e }))} placeholder="+91 9876543210" keyboard="phone-pad" required={true} error={formData.errors.phone} />
             </>
           )}
 
-          {/* ── Step 2 — Medical ── */}
           {step === 1 && (
             <>
               <Text style={styles.stepTitle}>Medical Information</Text>
-
-              {/* DOB — calendar picker */}
-              <InputField
-                icon="🎂"
-                label="Date of Birth"
-                value={dobDisplay}
-                onChange={() => { }}
-                placeholder="Tap to select date"
-                editable={false}
-                onPress={() => setShowDatePkr(true)}
-              />
-              {showDatePkr && (
+              <InputField icon="🎂" label="Date of Birth" value={dobDisplay} onChange={() => { }} placeholder="Tap to select date" editable={false} onPress={() => setFormData(prev => ({ ...prev, showDatePkr: true }))} required={true} error={formData.errors.dob} />
+              {formData.showDatePkr && (
                 <DateTimePicker
-                  value={dob ?? new Date(2000, 0, 1)}
+                  value={formData.dob ?? new Date(2000, 0, 1)}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
                   maximumDate={new Date()}
                   minimumDate={new Date(1920, 0, 1)}
                   onChange={(event, selectedDate) => {
-                    setShowDatePkr(false);
-                    if (event.type !== 'dismissed' && selectedDate) setDob(selectedDate);
+                    setFormData(prev => ({ ...prev, showDatePkr: false }));
+                    if (event.type !== 'dismissed' && selectedDate) setFormData(prev => ({ ...prev, dob: selectedDate }));
                   }}
                 />
               )}
-
-              <Selector label="Gender" options={GENDERS} selected={gender} onSelect={setGender} />
-              <Selector label="Blood Group" options={BLOOD_GROUPS} selected={bloodGroup} onSelect={setBloodGroup} />
+              <Selector label="Gender" options={GENDERS} selected={formData.gender} onSelect={e => setFormData(prev => ({ ...prev, gender: e }))} required={true} error={formData.errors.gender} />
+              <Selector label="Blood Group" options={BLOOD_GROUPS} selected={formData.bloodGroup} onSelect={e => setFormData(prev => ({ ...prev, bloodGroup: e }))} required={true} error={formData.errors.bloodGroup} />
+              <View style={styles.rowFields}>
+                {/* <View style={{ flex: 1 }}>
+                  <InputField icon="⚖️" label="Weight (kg)" value={formData.weight} onChange={e => setFormData(prev => ({ ...prev, weight: e }))} placeholder="70" keyboard="numeric" />
+                </View> */}
+                <View style={{ width: SPACING.md }} />
+                {/* <View style={{ flex: 1 }}>
+                  <InputField icon="📏" label="Height (cm)" value={formData.height} onChange={e => setFormData(prev => ({ ...prev, height: e }))} placeholder="170" keyboard="numeric" />
+                </View> */}
+              </View>
+              <InputField icon="🏥" label="Existing Conditions (optional)" value={formData.conditions} onChange={e => setFormData(prev => ({ ...prev, conditions: e }))} placeholder="e.g. Diabetes, Hypertension" />
+              
+              <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Address Information</Text>
+              <InputField icon="🏠" label="Address" value={formData.address} onChange={e => setFormData(prev => ({ ...prev, address: e }))} placeholder="123 Main Street" required={true} error={formData.errors.address} />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <InputField icon="⚖️" label="Weight (kg)" value={weight} onChange={setWeight} placeholder="70" keyboard="numeric" />
+                  <InputField icon="🏙️" label="City" value={formData.city} onChange={e => setFormData(prev => ({ ...prev, city: e }))} placeholder="Enter your City" required={true} error={formData.errors.city} />
                 </View>
                 <View style={{ width: SPACING.md }} />
                 <View style={{ flex: 1 }}>
-                  <InputField icon="📏" label="Height (cm)" value={height} onChange={setHeight} placeholder="170" keyboard="numeric" />
+                  <InputField icon="📍" label="State" value={formData.state} onChange={e => setFormData(prev => ({ ...prev, state: e }))} placeholder="State" required={true} error={formData.errors.state} />
                 </View>
               </View>
-              <InputField
-                icon="🏥" label="Existing Conditions (optional)"
-                value={conditions} onChange={setConditions}
-                placeholder="e.g. Diabetes, Hypertension"
-              />
+              <InputField icon="📮" label="ZIP Code" value={formData.zipCode} onChange={e => setFormData(prev => ({ ...prev, zipCode: e }))} placeholder="10001" keyboard="numeric" required={true} error={formData.errors.zipCode} />
             </>
           )}
 
-          {/* ── Step 3 — Security ── */}
           {step === 2 && (
             <>
-              <Text style={styles.stepTitle}>Create Password</Text>
-              <InputField
-                icon="🔒" label="Password" value={password} onChange={setPassword}
-                placeholder="Min 6 characters" secure={secureP} onSecureToggle={() => setSecureP(p => !p)}
-              />
-              <InputField
-                icon="🔐" label="Confirm Password" value={confirm} onChange={setConfirm}
-                placeholder="Re-enter password" secure={secureC} onSecureToggle={() => setSecureC(p => !p)}
-              />
+              <Text style={styles.stepTitle}>Emergency Contact</Text>
+              <InputField icon="🚨" label="Emergency Contact Name" value={formData.emergencyContactName} onChange={e => setFormData(prev => ({ ...prev, emergencyContactName: e }))} placeholder="e.g. Family Member" required={true} error={formData.errors.emergencyContactName} />
+              <InputField icon="📞" label="Emergency Contact Phone" value={formData.emergencyContactPhone} onChange={e => setFormData(prev => ({ ...prev, emergencyContactPhone: e }))} placeholder="+91 9876543210" keyboard="phone-pad" required={true} error={formData.errors.emergencyContactPhone} />
+              
+              <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Create Password</Text>
+              <InputField icon="🔒" label="Password" value={formData.password} onChange={e => setFormData(prev => ({ ...prev, password: e }))} placeholder="Min 6 characters" secure={formData.secureP} onSecureToggle={() => setFormData(prev => ({ ...prev, secureP: !prev.secureP }))} required={true} error={formData.errors.password} />
+              <InputField icon="🔐" label="Confirm Password" value={formData.confirm} onChange={e => setFormData(prev => ({ ...prev, confirm: e }))} placeholder="Re-enter password" secure={formData.secureC} onSecureToggle={() => setFormData(prev => ({ ...prev, secureC: !prev.secureC }))} required={true} error={formData.errors.confirm} />
               <View style={styles.termsRow}>
                 <Text style={styles.termsTxt}>By signing up you agree to our </Text>
                 <TouchableOpacity onPress={() => Alert.alert('Terms', 'Opening...')}>
@@ -740,12 +323,9 @@ export default function SignupScreen({ navigation }) {
             </>
           )}
 
-          {/* Nav Buttons */}
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
             <LinearGradient colors={COLORS.gradPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextGrad}>
-              <Text style={styles.nextTxt}>
-                {step < STEPS.length - 1 ? `Next: ${STEPS[step + 1]}  →` : '🎉  Create Account'}
-              </Text>
+              <Text style={styles.nextTxt}>{step < STEPS.length - 1 ? `Next: ${STEPS[step + 1]}  →` : '  Create Account'}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -756,336 +336,25 @@ export default function SignupScreen({ navigation }) {
           )}
         </View>
 
-        {/* Login link */}
         <View style={styles.loginRow}>
           <Text style={styles.loginTxt}>Already have an account?</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.loginLink}>  Sign In</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-<<<<<<< Updated upstream
   root: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, padding: SPACING.lg, paddingBottom: SPACING.xxxl },
-=======
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f9ff',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  decorCircle1: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(6, 182, 212, 0.08)',
-    top: -50,
-    right: -50,
-  },
-  decorCircle2: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(6, 182, 212, 0.06)',
-    bottom: 100,
-    left: -40,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoContainer: {
-    marginBottom: 16,
-  },
-  logoGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#cbd5e1',
-    marginHorizontal: 4,
-  },
-  progressDotActive: {
-    width: 32,
-    backgroundColor: '#06b6d4',
-  },
-  stepContainer: {
-    marginBottom: 24,
-  },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  stepSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 24,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  inputWrapper: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  input: {
-    height: 52,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#0f172a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  textArea: {
-    height: 80,
-    paddingTop: 14,
-    textAlignVertical: 'top',
-  },
-  rowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  halfInput: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  optionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  optionButton: {
-    flex: 1,
-    height: 48,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  optionButtonSelected: {
-    backgroundColor: '#ecfeff',
-    borderColor: '#06b6d4',
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  optionTextSelected: {
-    color: '#06b6d4',
-  },
-  bloodGroupContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  bloodGroupButton: {
-    width: '23%',
-    height: 44,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: '1%',
-    marginBottom: 8,
-  },
-  bloodGroupButtonSelected: {
-    backgroundColor: '#ecfeff',
-    borderColor: '#06b6d4',
-  },
-  bloodGroupText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  bloodGroupTextSelected: {
-    color: '#06b6d4',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  backButton: {
-    flex: 1,
-    height: 54,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  nextButton: {
-    flex: 1,
-    height: 54,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  fullWidthButton: {
-    flex: 1,
-    marginRight: 0,
-  },
-  buttonGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  termsContainer: {
-    marginTop: 16,
-    paddingHorizontal: 4,
-  },
-  termsText: {
-    fontSize: 13,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 20,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  termsLink: {
-    color: '#06b6d4',
-    fontWeight: '600',
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  loginText: {
-    fontSize: 14,
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  loginLink: {
-    fontSize: 14,
-    color: '#06b6d4',
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  submitErrorContainer: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
-  },
-  submitErrorText: {
-    fontSize: 14,
-    color: '#991b1b',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-});
->>>>>>> Stashed changes
-
   brand: { alignItems: 'center', marginBottom: SPACING.xxl, marginTop: SPACING.sm },
   logoBox: { width: 72, height: 72, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md, ...SHADOW.lg },
   logoTxt: { fontSize: FONT.xxl, fontWeight: '800', color: COLORS.textInverse },
   appName: { fontSize: FONT.h1, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
   tagline: { fontSize: FONT.sm, color: COLORS.textSecondary },
-
   stepperWrap: { marginBottom: SPACING.xl },
   stepperTrack: { height: 4, backgroundColor: COLORS.border, borderRadius: 2, marginHorizontal: SPACING.xxxl, marginBottom: SPACING.md },
   stepperFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 2 },
@@ -1094,38 +363,37 @@ const styles = StyleSheet.create({
   stepCircle: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   stepNum: { fontWeight: '700', fontSize: FONT.sm },
   stepLabel: { fontSize: FONT.xs, fontWeight: '600' },
-
   card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.xxl, ...SHADOW.md, marginBottom: SPACING.lg },
   stepTitle: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.xl },
-
   rowFields: { flexDirection: 'row' },
   fieldWrap: { marginBottom: SPACING.lg },
-  label: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.textSecondary, marginBottom: SPACING.sm },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
+  label: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.textSecondary },
+  requiredStar: { color: '#E74C3C', marginLeft: 4, fontSize: FONT.base, fontWeight: '700' },
   inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: SPACING.md },
+  inputRowError: { borderColor: '#E74C3C' },
   inputReadOnly: { color: COLORS.textSecondary },
   inputPrefix: { fontSize: 16, marginRight: SPACING.sm },
   inputSuffix: { fontSize: 16, marginLeft: SPACING.sm },
   input: { flex: 1, paddingVertical: SPACING.md, fontSize: FONT.base, color: COLORS.textPrimary },
   eyeBtn: { paddingLeft: SPACING.sm },
   eyeTxt: { color: COLORS.primary, fontWeight: '600', fontSize: FONT.sm },
-
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  chipRowError: { opacity: 0.7 },
   selectChip: { paddingHorizontal: SPACING.md, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surfaceAlt },
   selectChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   selectChipTxt: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.textSecondary },
   selectChipTxtActive: { color: COLORS.textInverse },
-
   termsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: SPACING.lg },
   termsTxt: { fontSize: FONT.sm, color: COLORS.textMuted },
   termsLink: { fontSize: FONT.sm, color: COLORS.primary, fontWeight: '700' },
-
   nextBtn: { borderRadius: RADIUS.md, overflow: 'hidden', marginBottom: SPACING.md },
   nextGrad: { paddingVertical: SPACING.lg, alignItems: 'center' },
   nextTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.md },
   backBtnCard: { alignItems: 'center', paddingVertical: SPACING.sm },
   backBtnTxt: { color: COLORS.textSecondary, fontWeight: '600', fontSize: FONT.base },
-
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: SPACING.sm },
   loginTxt: { color: COLORS.textSecondary, fontSize: FONT.sm },
   loginLink: { color: COLORS.primary, fontWeight: '700', fontSize: FONT.sm },
+  errorText: { fontSize: FONT.xs, color: '#E74C3C', marginTop: 4, fontWeight: '500' },
 });

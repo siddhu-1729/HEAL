@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
 import { AppProvider, useAppTheme } from './src/context/AppContext';
 import { COLORS, FONT, SHADOW } from './src/theme/theme';
 
@@ -57,10 +56,10 @@ function MainTabs() {
         tabBarShowLabel: false,
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label={strings.home} focused={focused} /> }} />
-      <Tab.Screen name="fitness" component={FitnessScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏃" label={strings.fitness} focused={focused} /> }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📋" label={strings.history} focused={focused} /> }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label={strings.profile} focused={focused} /> }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🏠" label={strings.home} focused={focused} /> }} />
+      <Tab.Screen name="fitness" component={FitnessScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🏃" label={strings.fitness} focused={focused} /> }} />
+      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="📋" label={strings.history} focused={focused} /> }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="👤" label={strings.profile} focused={focused} /> }} />
     </Tab.Navigator>
   );
 }
