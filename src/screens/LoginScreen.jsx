@@ -39,6 +39,19 @@ export default function LoginScreen({ navigation }) {
     }
     if (password.length < 6) {
       Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+      });
+      return false;
+    }
+    if (password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Weak Password',
+        text2: 'Password must be at least 6 characters long',
+      });
       return false;
     }
     return true;
@@ -51,6 +64,34 @@ export default function LoginScreen({ navigation }) {
       setLoading(true);
       setTimeout(() => setLoading(false), 900);
       navigation.navigate('MainTabs');
+    setLoading(true);
+
+    const host = 'http://192.168.1.8:8000';
+
+    try {
+      // const res = await fetch(`${host}/login`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      //   body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      // });
+
+      // const data = await res.json();
+
+      // if (!res.ok) {
+      //   throw new Error(data.detail || 'Login failed');
+      // }
+
+      // await AsyncStorage.setItem('jwtToken', data.access_token);
+      // // await AsyncStorage.setItem('userName', data.name);
+      // console.log('Login successful, token stored');
+
+      // Toast.show({
+      //   type: 'success',
+      //   text1: 'Login Successful',
+      //   text2: `Welcome ${data.name}`,
+      // });
+
+      navigation.navigate('HomeScreen');
       scheduleDailyNotification();
     } catch (err) {
       Toast.show({
@@ -78,6 +119,15 @@ export default function LoginScreen({ navigation }) {
         Alert.alert('Success', `Logged in as ${user.email}`);
         navigation?.navigate('MainTabs');
       } else Alert.alert('Error', 'Backend authentication failed');
+      // const res = await fetch('YOUR_BACKEND_URL/auth/google', {
+      //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ idToken, email: user.email }),
+      // });
+      // if (res.ok) { Alert.alert('Success', `Logged in as ${user.email}`); navigation?.navigate('MainTabs'); }
+      // else Alert.alert('Error', 'Backend authentication failed');
+
+      // Directly navigate to allow access
+      navigation?.navigate('HomeScreen');
     } catch (err) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
       Alert.alert('Error', err.message || 'Google sign-in failed');
