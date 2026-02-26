@@ -1,46 +1,128 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, SafeAreaView, StatusBar, Alert,
+    StyleSheet, SafeAreaView, StatusBar, ActivityIndicator, Modal
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 
-const USER_DATA = {
-    firstName: 'User', lastName: '',
-    email: 'user@healverse.com', phone: '+91 98765 43210',
-    dateOfBirth: '01/01/1995', gender: 'Male', bloodGroup: 'O+',
-    city: 'Mumbai', state: 'Maharashtra',
+const INITIAL_DATA = {
+    firstName: '',
+    lastName: '',
+    email: 'user@healverse.com',
+    phone: '+91 98765 43210',
+    age: null,
+    bloodGroup: 'O+',
+    gender: 'Male',
+    city: 'Mumbai',
     address: '123, Health Street, Andheri West',
     emergencyContactName: 'Emergency Contact',
     emergencyContactPhone: '+91 91234 56789',
 };
 
-const HEALTH_BADGES = [
-    { label: 'Blood Group', value: USER_DATA.bloodGroup, icon: '🩸', colors: COLORS.gradPink },
-    { label: 'Gender', value: USER_DATA.gender, icon: '👤', colors: COLORS.gradPrimary },
-    { label: 'DOB', value: USER_DATA.dateOfBirth, icon: '🎂', colors: COLORS.gradAccent },
-];
-
-const INFO_ITEMS = [
-    { icon: '📞', label: 'Phone', value: USER_DATA.phone },
-    { icon: '📍', label: 'Location', value: `${USER_DATA.city}, ${USER_DATA.state}` },
-    { icon: '🏠', label: 'Address', value: USER_DATA.address },
-    { icon: '🚨', label: 'Emergency Contact', value: `${USER_DATA.emergencyContactName} · ${USER_DATA.emergencyContactPhone}` },
-];
-
 export default function ProfileScreen({ navigation }) {
+    const [profileData, setProfileData] = useState(INITIAL_DATA);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+    useEffect(() => {
+        fetchProfileData();
+    }, []);
 
-    const handleLogout = () => {
-        Alert.alert('Log Out', 'Are you sure you want to log out?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Log Out', style: 'destructive',
-                onPress: () => navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] })
-            },
-        ]);
+    const fetchProfileData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const token = await AsyncStorage.getItem('jwtToken');
+            if (!token) {
+                setError('No authentication token found');
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch('http://192.168.1.8:8000/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    setError('Session expired. Please login again');
+                    await AsyncStorage.removeItem('jwtToken');
+                } else {
+                    setError('Failed to fetch profile data');
+                }
+                setLoading(false);
+                return;
+            }
+
+            const data = await response.json();
+            setProfileData(data);
+         AsyncStorage.setItem('userName', data.firstName);
+        } catch (err) {
+            console.error('Profile fetch error:', err);
+            setError(err.message || 'Network error');
+        } finally {
+            setLoading(false);
+        }
     };
+
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('jwtToken');
+            setShowLogoutModal(false);
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+        } catch (err) {
+            console.error('Logout error:', err);
+        }
+    };
+
+    const HEALTH_BADGES = [
+        { label: 'Blood Group', value: profileData.bloodGroup, icon: '🩸', colors: COLORS.gradPink },
+        { label: 'Gender', value: profileData.gender, icon: '👤', colors: COLORS.gradPrimary },
+        { label: 'Age', value: profileData.age ? `${profileData.age} yrs` : 'N/A', icon: '🎂', colors: COLORS.gradAccent },
+    ];
+
+    const INFO_ITEMS = [
+        { icon: '📞', label: 'Phone', value: profileData.phone },
+        { icon: '📍', label: 'Location', value: `${profileData.city}` },
+        { icon: '🏠', label: 'Address', value: profileData.address },
+        { icon: '🚨', label: 'Emergency Contact', value: `${profileData.emergencyContactName} · ${profileData.emergencyContactPhone}` },
+    ];
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (error) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorIcon}>⚠️</Text>
+                    <Text style={styles.errorTitle}>Error</Text>
+                    <Text style={styles.errorMessage}>{error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={fetchProfileData}>
+                        <Text style={styles.retryBtnText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -55,12 +137,12 @@ export default function ProfileScreen({ navigation }) {
 
                     <View style={styles.avatarRing}>
                         <LinearGradient colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']} style={styles.avatarInner}>
-                            <Text style={styles.avatarText}>{USER_DATA.firstName[0]}</Text>
+                            <Text style={styles.avatarText}>{profileData.firstName[0]}</Text>
                         </LinearGradient>
                     </View>
-                    <Text style={styles.heroName}>{USER_DATA.firstName} {USER_DATA.lastName}</Text>
-                    <Text style={styles.heroEmail}>{USER_DATA.email}</Text>
-                    <TouchableOpacity style={styles.editBtn} onPress={() => Alert.alert('Edit Profile', 'Coming soon!')}>
+                    <Text style={styles.heroName}>{profileData.firstName} {profileData.lastName}</Text>
+                    <Text style={styles.heroEmail}>{profileData.email}</Text>
+                    <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('Settings')}>
                         <Text style={styles.editBtnText}>✏️  Edit Profile</Text>
                     </TouchableOpacity>
                 </LinearGradient>
@@ -97,25 +179,31 @@ export default function ProfileScreen({ navigation }) {
                     </View>
                 </View>
 
-
-
                 {/* ── Account ── */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Account</Text>
                     <View style={styles.card}>
-                        {[
-                            { icon: '⚙️', label: 'Settings', onPress: () => navigation.navigate('Settings') },
-                            { icon: '🔒', label: 'Privacy Policy', onPress: () => Alert.alert('Privacy Policy', 'Opening...') },
-                            { icon: '💬', label: 'Help & Support', onPress: () => Alert.alert('Help', 'Opening...') },
-                            { icon: 'ℹ️', label: 'About App', onPress: () => Alert.alert('Version', 'Heal-verse v1.0.0') },
-                        ].map((a, i) => (
-                            <TouchableOpacity key={a.label} style={[styles.row, styles.rowBorder]} onPress={a.onPress}>
-                                <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>{a.icon}</Text></View>
-                                <Text style={[styles.rowValue, { flex: 1 }]}>{a.label}</Text>
-                                <Text style={styles.chevron}>›</Text>
-                            </TouchableOpacity>
-                        ))}
-                        <TouchableOpacity style={styles.row} onPress={handleLogout}>
+                        <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => navigation.navigate('Settings')}>
+                            <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>⚙️</Text></View>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>Settings</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
+                            <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🔒</Text></View>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>Privacy Policy</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
+                            <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>💬</Text></View>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>Help & Support</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
+                            <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>ℹ️</Text></View>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>About App</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.row} onPress={() => setShowLogoutModal(true)}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🚪</Text></View>
                             <Text style={[styles.rowValue, { flex: 1, color: COLORS.danger }]}>Log Out</Text>
                             <Text style={[styles.chevron, { color: COLORS.danger }]}>›</Text>
@@ -124,6 +212,35 @@ export default function ProfileScreen({ navigation }) {
                 </View>
 
             </ScrollView>
+
+            {/* ── Logout Modal ── */}
+            <Modal
+                visible={showLogoutModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowLogoutModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Log Out</Text>
+                        <Text style={styles.modalMessage}>Are you sure you want to log out?</Text>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.cancelBtn]}
+                                onPress={() => setShowLogoutModal(false)}
+                            >
+                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.logoutBtn]}
+                                onPress={handleLogout}
+                            >
+                                <Text style={styles.logoutBtnText}>Log Out</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -132,6 +249,16 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     section: { paddingHorizontal: SPACING.lg, marginTop: SPACING.xxl },
     sectionTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.md },
+
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.md },
+    loadingText: { fontSize: FONT.base, color: COLORS.textMuted },
+
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.lg, gap: SPACING.md },
+    errorIcon: { fontSize: 48 },
+    errorTitle: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.textPrimary },
+    errorMessage: { fontSize: FONT.base, color: COLORS.textMuted, textAlign: 'center' },
+    retryBtn: { marginTop: SPACING.lg, backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: RADIUS.full },
+    retryBtnText: { color: COLORS.textInverse, fontWeight: '600', fontSize: FONT.base },
 
     // Hero
     hero: { paddingTop: SPACING.xl, paddingBottom: SPACING.xxxl, alignItems: 'center', paddingHorizontal: SPACING.lg },
@@ -163,6 +290,15 @@ const styles = StyleSheet.create({
     rowValue: { fontSize: FONT.base, fontWeight: '600', color: COLORS.textPrimary },
     chevron: { fontSize: FONT.xl, color: COLORS.textMuted },
 
-    settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg },
-    settingIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.surfaceAlt, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.xl, width: '80%', maxWidth: 320, ...SHADOW.lg },
+    modalTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.md },
+    modalMessage: { fontSize: FONT.base, color: COLORS.textMuted, marginBottom: SPACING.lg },
+    modalButtons: { flexDirection: 'row', gap: SPACING.md },
+    modalBtn: { flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.md, alignItems: 'center' },
+    cancelBtn: { backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.border },
+    cancelBtnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: FONT.base },
+    logoutBtn: { backgroundColor: COLORS.danger },
+    logoutBtnText: { color: COLORS.textInverse, fontWeight: '600', fontSize: FONT.base },
 });

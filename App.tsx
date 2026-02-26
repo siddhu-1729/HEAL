@@ -58,7 +58,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🏠" label={strings.home} focused={focused} /> }} />
       <Tab.Screen name="fitness" component={FitnessScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🏃" label={strings.fitness} focused={focused} /> }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="📋" label={strings.history} focused={focused} /> }} />
+      {/* <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="📋" label={strings.history} focused={focused} /> }} /> */}
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="👤" label={strings.profile} focused={focused} /> }} />
     </Tab.Navigator>
   );
@@ -98,7 +98,8 @@ function InnerApp() {
 
         {/* Main app with bottom tabs */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
-
+       {/* Home Screen */}
+        <Stack.Screen name="HomeScreen" component={HomeScreen} />
         {/* Full-screen stack */}
         <Stack.Screen name="Upload" component={UploadScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
@@ -106,6 +107,9 @@ function InnerApp() {
         <Stack.Screen name="AdviceCaution" component={AdviceCautionScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Notifications" component={NotificationPanelScreen} />
+
+        {/* Profile Page */}
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

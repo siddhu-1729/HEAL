@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ScrollView, Alert, Image, AsyncStorage,
+  ScrollView, Alert, Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import scheduleDailyNotification from '../services/notification';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import Toast from 'react-native-toast-message';
 
 GoogleSignin.configure({
   webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
@@ -22,22 +24,66 @@ export default function LoginScreen({ navigation }) {
 
   const validate = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.'); return false;
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+      });
+     return false;
     }
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.'); return false;
+      Toast.show({
+        type: 'error',
+        text1: 'Weak Password',
+        text2: 'Password must be at least 6 characters long',
+      });
+       return false;
     }
     return true;
   };
 
   const handleLogin = async () => {
-    if (!validate()) return;
-    
-    setLoading(true);
-    setTimeout(() => setLoading(false), 900);
-    navigation.navigate('MainTabs');
+  if (!validate()) return;
+
+  setLoading(true);
+
+  const host ='http://192.168.1.8:8000';
+
+  try {
+    const res = await fetch(`${host}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || 'Login failed');
+    }
+
+    await AsyncStorage.setItem('jwtToken', data.access_token);
+    // await AsyncStorage.setItem('userName', data.name);
+    console.log('Login successful, token stored');
+
+    Toast.show({
+      type: 'success',
+      text1: 'Login Successful',
+      text2: `Welcome ${data.name}`,
+    });
+
+    navigation.navigate('HomeScreen');
     scheduleDailyNotification();
-  };
+  } catch (err) {
+    Toast.show({
+      type: 'error',
+      text1: 'Login Error',
+      text2: err.message || 'Unable to login',
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleSignIn = async () => {
     try {

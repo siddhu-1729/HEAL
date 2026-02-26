@@ -7,7 +7,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
-
+import Toast from 'react-native-toast-message';
 const STEPS = ['Personal', 'Medical', 'Security'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GENDERS = ['Male', 'Female', 'Other'];
@@ -167,9 +167,6 @@ export default function SignupScreen({ navigation }) {
         age: age,
         gender: formData.gender,
         bloodGroup: formData.bloodGroup,
-        // weight: formData.weight || null,
-        // height: formData.height || null,
-        // conditions: formData.conditions || null,
         address: formData.address.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
@@ -181,7 +178,7 @@ export default function SignupScreen({ navigation }) {
 
       console.log('Sending signup data:', signupData);
 
-      const response = await fetch('http://192.168.1.13:8000/signup', {
+      const response = await fetch('http://192.168.1.8:8000/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,12 +194,20 @@ export default function SignupScreen({ navigation }) {
 
       console.log('Signup successful:', data);
       setFormData(prev => ({ ...prev, loading: false }));
-      Alert.alert('Success! 🎉', 'Account created successfully! Please login.');
+      Toast.show({
+        type: 'success',
+        text1: 'Signup Successful',
+        text2: 'Your account has been created. Please login.',
+      })
       navigation.navigate('LoginScreen');
     } catch (err) {
       const errorMsg = err.message || 'An error occurred during signup';
       setFormData(prev => ({ ...prev, loading: false, error: errorMsg }));
-      Alert.alert('Signup Error', errorMsg);
+      Toast.show({
+        type: 'error',
+        text1: 'Signup Error',
+        text2: errorMsg,
+      });
       console.error('Signup error:', err);
     }
   };

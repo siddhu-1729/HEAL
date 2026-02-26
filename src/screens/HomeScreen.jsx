@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar, FlatList, Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
-import scheduleDailyNotification from '../services/notification';
+
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 
 
@@ -27,8 +28,24 @@ const UPCOMING_APPOINTMENTS = [
 ];
 
 export default function HomeScreen({ navigation }) {
-  const [userName] = useState('User');
+  const [userName, setUserName] = useState('User');
 
+  useEffect(() => {
+    let mounted = true;
+    const loadName = async () => {
+      try {
+        const name = await AsyncStorage.getItem('userName');
+        if (mounted && name) setUserName(name);
+      } catch (err) {
+        // ignore
+      }
+    };
+    loadName();
+
+    const unsub = navigation.addListener('focus', loadName);
+    return () => { mounted = false; unsub(); };
+  }, [navigation]);
+  
   const handleQuickAction = (id) => {
     if (id === 1) navigation.navigate('Upload');
     else if (id === 2) navigation.navigate('History');
@@ -81,7 +98,7 @@ export default function HomeScreen({ navigation }) {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>Hello, {userName} 👋</Text>
+            <Text style={styles.greeting}>Hello, {userName}</Text>
             <Text style={styles.dateText}>
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </Text>
@@ -92,9 +109,9 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.bellBadge}><Text style={styles.bellBadgeTxt}>2</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
-              <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
-                <Text style={styles.avatarText}>U</Text>
-              </LinearGradient>
+                <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
+                  <Text style={styles.avatarText}>{userName && userName.length ? userName[0] : 'U'}</Text>
+                </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
