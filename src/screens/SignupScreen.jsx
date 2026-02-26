@@ -84,7 +84,7 @@ export default function SignupScreen({ navigation }) {
     email: '',
     phone: '',
     dob: null,
-   
+
     gender: '',
     bloodGroup: '',
     // weight: '',
@@ -153,7 +153,7 @@ export default function SignupScreen({ navigation }) {
 
   const handleSignup = async () => {
     if (!validateStep()) return;
-    
+
     setFormData(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -178,21 +178,21 @@ export default function SignupScreen({ navigation }) {
 
       console.log('Sending signup data:', signupData);
 
-      const response = await fetch('http://192.168.1.8:8000/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(signupData),
-      });
+      // const response = await fetch('http://192.168.1.8:8000/signup', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(signupData),
+      // });
 
-      const data = await response.json();
+      // const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.detail || data.message || 'Signup failed');
-      }
+      // if (!response.ok) {
+      //   throw new Error(data.detail || data.message || 'Signup failed');
+      // }
 
-      console.log('Signup successful:', data);
+      // console.log('Signup successful:', data);
       setFormData(prev => ({ ...prev, loading: false }));
       Toast.show({
         type: 'success',
@@ -294,7 +294,7 @@ export default function SignupScreen({ navigation }) {
                 </View> */}
               </View>
               <InputField icon="🏥" label="Existing Conditions (optional)" value={formData.conditions} onChange={e => setFormData(prev => ({ ...prev, conditions: e }))} placeholder="e.g. Diabetes, Hypertension" />
-              
+
               <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Address Information</Text>
               <InputField icon="🏠" label="Address" value={formData.address} onChange={e => setFormData(prev => ({ ...prev, address: e }))} placeholder="123 Main Street" required={true} error={formData.errors.address} />
               <View style={styles.rowFields}>
@@ -315,7 +315,7 @@ export default function SignupScreen({ navigation }) {
               <Text style={styles.stepTitle}>Emergency Contact</Text>
               <InputField icon="🚨" label="Emergency Contact Name" value={formData.emergencyContactName} onChange={e => setFormData(prev => ({ ...prev, emergencyContactName: e }))} placeholder="e.g. Family Member" required={true} error={formData.errors.emergencyContactName} />
               <InputField icon="📞" label="Emergency Contact Phone" value={formData.emergencyContactPhone} onChange={e => setFormData(prev => ({ ...prev, emergencyContactPhone: e }))} placeholder="+91 9876543210" keyboard="phone-pad" required={true} error={formData.errors.emergencyContactPhone} />
-              
+
               <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Create Password</Text>
               <InputField icon="🔒" label="Password" value={formData.password} onChange={e => setFormData(prev => ({ ...prev, password: e }))} placeholder="Min 6 characters" secure={formData.secureP} onSecureToggle={() => setFormData(prev => ({ ...prev, secureP: !prev.secureP }))} required={true} error={formData.errors.password} />
               <InputField icon="🔐" label="Confirm Password" value={formData.confirm} onChange={e => setFormData(prev => ({ ...prev, confirm: e }))} placeholder="Re-enter password" secure={formData.secureC} onSecureToggle={() => setFormData(prev => ({ ...prev, secureC: !prev.secureC }))} required={true} error={formData.errors.confirm} />

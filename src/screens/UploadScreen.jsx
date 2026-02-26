@@ -4,7 +4,7 @@ import {
     StyleSheet, SafeAreaView, StatusBar, Alert, ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 
 const SCAN_TYPES = [
@@ -25,36 +25,100 @@ export default function UploadScreen({ navigation }) {
     const [analyzing, setAnalyzing] = useState(false);
 
     const [fileName, setFileName] = useState(null);
+    const [fileAsset, setFileAsset] = useState(null);
 
     const pickFile = () => {
         if (!selected) { Alert.alert('Select Scan', 'Choose a scan type first.'); return; }
-        launchImageLibrary(
-            { mediaType: 'mixed', quality: 0.8, selectionLimit: 1 },
-            (response) => {
-                if (response.didCancel) return;
-                if (response.errorCode) {
-                    Alert.alert('Error', response.errorMessage ?? 'Failed to pick file.');
-                    return;
-                }
-                const asset = response.assets?.[0];
-                if (asset) {
-                    setFilePicked(true);
-                    setFileName(asset.fileName ?? 'scan_file');
-                }
-            },
+
+        Alert.alert(
+            'Upload File',
+            'Choose an option',
+            [
+                {
+                    text: 'Take Photo',
+                    onPress: () => {
+                        launchCamera(
+                            { mediaType: 'photo', quality: 0.8 },
+                            (response) => {
+                                handleImageResponse(response);
+                            }
+                        );
+                    }
+                },
+                {
+                    text: 'Choose from Gallery',
+                    onPress: () => {
+                        launchImageLibrary(
+                            { mediaType: 'photo', quality: 0.8, selectionLimit: 1 },
+                            (response) => {
+                                handleImageResponse(response);
+                            }
+                        );
+                    }
+                },
+                { text: 'Cancel', style: 'cancel' }
+            ],
+            { cancelable: true }
         );
     };
 
-    const analyze = () => {
-        if (!selected || !filePicked) {
+    const handleImageResponse = (response) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+            Alert.alert('Error', response.errorMessage ?? 'Failed to pick file.');
+            return;
+        }
+        const asset = response.assets?.[0];
+        if (asset) {
+            setFilePicked(true);
+            setFileName(asset.fileName ?? 'scan_file');
+            setFileAsset(asset);
+        }
+    };
+
+    const analyze = async () => {
+        if (!selected || !filePicked || !fileAsset) {
             Alert.alert('Incomplete', 'Select scan type and upload a file first.');
             return;
         }
+
         setAnalyzing(true);
-        setTimeout(() => {
+        try {
+            const formData = new FormData();
+            formData.append('file', {
+                uri: fileAsset.uri,
+                type: fileAsset.type || 'image/jpeg',
+                name: fileAsset.fileName || 'scan.jpg',
+            });
+
+            const response = await fetch('http://192.168.1.8:8000/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || data.error || 'Failed to upload scan');
+            }
+
+            console.log('Upload successful:', data);
+
+            // Navigate to Result screen with real or dummy data depending on response structure
+            navigation.navigate('Result', {
+                scanType: selected,
+                result: data.result || DUMMY_RESULTS[selected]
+            });
+
+        } catch (error) {
+            console.error('Upload Error:', error);
+            Alert.alert('Upload Failed', error.message || 'An error occurred while uploading the scan.');
+        } finally {
             setAnalyzing(false);
-            navigation.navigate('Result', { scanType: selected, result: DUMMY_RESULTS[selected] });
-        }, 2000);
+        }
     };
 
     return (
@@ -111,8 +175,8 @@ export default function UploadScreen({ navigation }) {
                     </View>
                     <TouchableOpacity style={[styles.uploadBox, filePicked && styles.uploadBoxDone]} onPress={pickFile} activeOpacity={0.8}>
                         <Text style={styles.uploadIcon}>{filePicked ? '✅' : '📂'}</Text>
-                        <Text style={styles.uploadTitle}>{filePicked ? (fileName ?? 'File selected') : 'Tap to upload from Gallery'}</Text>
-                        <Text style={styles.uploadSub}>{filePicked ? 'Ready for analysis' : 'Supports JPG · PNG · DICOM'}</Text>
+                        <Text style={styles.uploadTitle}>{filePicked ? (fileName ?? 'File selected') : 'Tap to upload'}</Text>
+                        <Text style={styles.uploadSub}>{filePicked ? 'Ready for analysis' : 'Supports JPG · PNG · DICOM files only'}</Text>
                     </TouchableOpacity>
                 </View>
 
