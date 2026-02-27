@@ -443,12 +443,7 @@ export default function FitnessScreen({ navigation }) {
                     </Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.timerBtn}
-                    onPress={() => stopWorkout(w.id)}
-                  >
-                    <Text style={styles.timerBtnTxt}>⏹</Text>
-                  </TouchableOpacity>
+
 
                   <TouchableOpacity
                     style={styles.timerBtn}
