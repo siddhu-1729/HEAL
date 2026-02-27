@@ -7,6 +7,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Video from 'react-native-video';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import { useAppTheme, useFitness } from '../context/AppContext';
 
 const DAILY_STATS = [
   { label: 'Steps', value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
@@ -14,12 +15,17 @@ const DAILY_STATS = [
   { label: 'Water', value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
   { label: 'Sleep', value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
 ];
-
-const INITIAL_WORKOUTS = [
-  { id: '1', name: 'Morning Run', duration: '30 min', calories: 320, type: 'Cardio', icon: '🏃', done: false, colors: COLORS.gradPrimary, threshold: 30, elapsed: 0, isActive: false },
-  { id: '2', name: 'Push-Up Circuit', duration: '20 min', calories: 180, type: 'Strength', icon: '💪', done: false, colors: COLORS.gradAccent, threshold: 20, elapsed: 0, isActive: false },
-  { id: '3', name: 'Yoga & Stretch', duration: '25 min', calories: 120, type: 'Flex', icon: '🧘', done: false, colors: COLORS.gradPurple, threshold: 25, elapsed: 0, isActive: false },
-  { id: '4', name: 'Cycling', duration: '45 min', calories: 450, type: 'Cardio', icon: '🚴', done: false, colors: COLORS.gradBone, threshold: 45, elapsed: 0, isActive: false },
+const PRESET_ACTIVITIES = [
+  'Running',
+  'Walking',
+  'Cycling',
+  'Swimming',
+  'Push-Up Circuit',
+  'Weight Lifting',
+  'Yoga & Stretch',
+  'Meditation',
+  'HIIT',
+  'Sports / Other'
 ];
 
 const WEEKLY = [
@@ -28,40 +34,40 @@ const WEEKLY = [
 ];
 
 const getVideoSource = (item) => {
-  const VIDEO_URLS = {
-    cardio: { uri: 'https://videos.pexels.com/video-files/5310962/5310962-uhd_1440_2560_25fps.mp4' },
-    strength: { uri: 'https://videos.pexels.com/video-files/4754030/4754030-uhd_2732_1440_25fps.mp4' },
-    yoga: { uri: 'https://videos.pexels.com/video-files/3760968/3760968-uhd_2560_1440_25fps.mp4' },
-    cycling: { uri: 'https://videos.pexels.com/video-files/5790075/5790075-hd_1920_1080_30fps.mp4' }
+  const VIDEO_NAMES = {
+    'Running': 'https://videos.pexels.com/video-files/5310962/5310962-uhd_1440_2560_25fps.mp4',
+    'Morning Run': 'https://videos.pexels.com/video-files/5310962/5310962-uhd_1440_2560_25fps.mp4', // fallback for default id:1
+    'Walking': 'https://videos.pexels.com/video-files/8045821/8045821-hd_1080_1920_25fps.mp4',
+    'Cycling': 'https://videos.pexels.com/video-files/5790075/5790075-hd_1920_1080_30fps.mp4',
+    'Swimming': 'https://videos.pexels.com/video-files/992714/992714-hd_1920_1080_25fps.mp4',
+    'Push-Up Circuit': 'https://videos.pexels.com/video-files/4754030/4754030-uhd_2732_1440_25fps.mp4',
+    'Weight Lifting': 'https://videos.pexels.com/video-files/4754030/4754030-uhd_2732_1440_25fps.mp4', // reuse strength
+    'Yoga & Stretch': 'https://videos.pexels.com/video-files/3760968/3760968-uhd_2560_1440_25fps.mp4',
+    'Meditation': 'https://videos.pexels.com/video-files/3209148/3209148-uhd_3840_2160_25fps.mp4',
+    'HIIT': 'https://videos.pexels.com/video-files/6389060/6389060-hd_1080_1920_25fps.mp4',
+    'Sports / Other': 'https://videos.pexels.com/video-files/4367572/4367572-hd_1920_1080_24fps.mp4'
   };
 
-  if (item.id === '1') return VIDEO_URLS.cardio;
-  if (item.id === '2') return VIDEO_URLS.strength;
-  if (item.id === '3') return VIDEO_URLS.yoga;
-  if (item.id === '4') return VIDEO_URLS.cycling;
-
-  if (item.type === 'Strength') return VIDEO_URLS.strength;
-  if (item.type === 'Flex') return VIDEO_URLS.yoga;
-  if (item.type === 'Sports') return VIDEO_URLS.cycling;
-
-  return VIDEO_URLS.cardio;
+  const uri = VIDEO_NAMES[item.name] || VIDEO_NAMES['Running']; // Default fallback if custom name used
+  return { uri };
 };
 
 export default function FitnessScreen({ navigation }) {
-  const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
+  const { workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex } = useFitness();
+
   const [water, setWater] = useState(6);
   const [showBMI, setShowBMI] = useState(false);
-  const [weight, setWeight] = useState('70');
-  const [height, setHeight] = useState('170');
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [activityName, setActivityName] = useState('');
   const [activityDuration, setActivityDuration] = useState('');
-  const [activityType, setActivityType] = useState('Cardio');
+  const [showActivityDropdown, setShowActivityDropdown] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingThreshold, setEditingThreshold] = useState('');
   const [showThresholdModal, setShowThresholdModal] = useState(false);
 
-  const [activeSessionIndex, setActiveSessionIndex] = useState(null);
+
   const flatListRef = useRef(null);
   const breathAnim = useRef(new Animated.Value(1)).current;
 
@@ -80,49 +86,7 @@ export default function FitnessScreen({ navigation }) {
     }
   }, [activeSessionIndex]);
 
-  // Timer effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setWorkouts(prev => {
-        let shouldAdvance = false;
 
-        const nextWorkouts = prev.map((w, index) => {
-          const isCurrentlyActiveSession = activeSessionIndex === index;
-
-          if (isCurrentlyActiveSession && w.elapsed < w.threshold * 60) {
-            return { ...w, elapsed: w.elapsed + 1, isActive: true };
-          } else if (isCurrentlyActiveSession && w.elapsed === w.threshold * 60) {
-            if (!w.done) {
-              shouldAdvance = true;
-              return { ...w, elapsed: w.elapsed, isActive: false, done: true };
-            }
-          }
-
-          if (!isCurrentlyActiveSession && w.isActive && w.elapsed < w.threshold * 60) {
-            return { ...w, elapsed: w.elapsed + 1 };
-          } else if (!isCurrentlyActiveSession && w.isActive && w.elapsed >= w.threshold * 60) {
-            if (!w.done) {
-              return { ...w, isActive: false, done: true };
-            }
-          }
-          return w;
-        });
-
-        if (shouldAdvance && activeSessionIndex !== null) {
-          if (activeSessionIndex < nextWorkouts.length - 1) {
-            const nextIdx = activeSessionIndex + 1;
-            setActiveSessionIndex(nextIdx);
-            flatListRef.current?.scrollToIndex({ index: nextIdx, animated: true });
-          } else {
-            Alert.alert('Workout Complete!', 'You finished all activities!');
-            setActiveSessionIndex(null);
-          }
-        }
-        return nextWorkouts;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [activeSessionIndex]);
 
   const handleScroll = (event) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -133,7 +97,12 @@ export default function FitnessScreen({ navigation }) {
   };
 
   const toggleTimer = (id) => {
-    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, isActive: !w.isActive } : w));
+    setWorkouts(prev => prev.map(w => {
+      if (w.id === id) {
+        return { ...w, isActive: !w.isActive };
+      }
+      return { ...w, isActive: false };
+    }));
   };
 
   const stopWorkout = (id) => {
@@ -160,7 +129,6 @@ export default function FitnessScreen({ navigation }) {
       name: activityName,
       duration: `${activityDuration} min`,
       calories: Math.floor(Math.random() * 300 + 100),
-      type: activityType,
       icon: '🏋️',
       done: false,
       colors: COLORS.gradPrimary,
@@ -171,7 +139,6 @@ export default function FitnessScreen({ navigation }) {
     setWorkouts([...workouts, newActivity]);
     setActivityName('');
     setActivityDuration('');
-    setActivityType('Cardio');
     setShowAddActivity(false);
   };
 
@@ -187,10 +154,6 @@ export default function FitnessScreen({ navigation }) {
   };
 
   const deleteActivity = (id) => {
-    if (id === '1' || id === '2' || id === '3' || id === '4') {
-      Alert.alert('Cannot Delete', 'Default activities cannot be deleted');
-      return;
-    }
     setWorkouts(prev => prev.filter(w => w.id !== id));
   };
 
@@ -228,16 +191,29 @@ export default function FitnessScreen({ navigation }) {
                 <View style={styles.bmiField}>
                   <Text style={styles.bmiFieldLabel}>Weight (kg)</Text>
                   <View style={styles.bmiInput}>
-                    <Text style={styles.bmiInputTxt}
-                      onPress={() => Alert.prompt?.('Weight', 'Enter weight in kg', setWeight) ?? Alert.alert('Enter', 'Type in weight field')}>
-                      {weight} kg
-                    </Text>
+                    <TextInput
+                      style={styles.bmiInputTxt}
+                      value={weight}
+                      onChangeText={setWeight}
+                      keyboardType="numeric"
+                      placeholder="-"
+                      placeholderTextColor={COLORS.textInverse}
+                      textAlign="center"
+                    />
                   </View>
                 </View>
                 <View style={styles.bmiField}>
                   <Text style={styles.bmiFieldLabel}>Height (cm)</Text>
                   <View style={styles.bmiInput}>
-                    <Text style={styles.bmiInputTxt}>{height} cm</Text>
+                    <TextInput
+                      style={styles.bmiInputTxt}
+                      value={height}
+                      onChangeText={setHeight}
+                      keyboardType="numeric"
+                      placeholder="-"
+                      placeholderTextColor={COLORS.textInverse}
+                      textAlign="center"
+                    />
                   </View>
                 </View>
               </View>
@@ -312,41 +288,60 @@ export default function FitnessScreen({ navigation }) {
 
             return (
               <View key={w.id} style={styles.activityCard}>
-                <LinearGradient colors={w.done ? [COLORS.border, COLORS.border] : w.colors}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.activityIconBox}>
-                  <Text style={styles.activityIcon}>{w.done ? '✅' : w.icon}</Text>
-                </LinearGradient>
+                <View style={styles.activityCardTop}>
+                  <LinearGradient colors={w.done ? [COLORS.border, COLORS.border] : w.colors}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.activityIconBox}>
+                    <Text style={styles.activityIcon}>{w.done ? '✅' : w.icon}</Text>
+                  </LinearGradient>
 
-                <View style={styles.activityInfo}>
-                  <Text style={[styles.activityName, w.done && styles.activityDoneText]}>{w.name}</Text>
-                  <Text style={styles.activityMeta}>{w.type} · {w.calories} kcal</Text>
+                  <View style={styles.activityInfo}>
+                    <Text style={[styles.activityName, w.done && styles.activityDoneText]}>{w.name}</Text>
+                    <Text style={styles.activityMeta}>{w.calories} kcal</Text>
 
-                  {/* Timer Display */}
-                  <View style={styles.timerSection}>
-                    <Text style={styles.timerLabel}>Time: <Text style={[styles.timerValue, isCompleted && styles.timerCompleted]}>{formatTime(w.elapsed)}</Text> / {w.threshold}:00</Text>
-                    {isCompleted && <Text style={styles.completedBadge}>✓ Completed</Text>}
-                  </View>
+                    {/* Timer Display */}
+                    <View style={styles.timerSection}>
+                      <Text style={styles.timerLabel}>Time: <Text style={[styles.timerValue, isCompleted && styles.timerCompleted]}>{formatTime(w.elapsed)}</Text> / {w.threshold}:00</Text>
+                      {isCompleted && <Text style={styles.completedBadge}>✓ Completed</Text>}
+                    </View>
 
-                  {/* Progress Bar */}
-                  <View style={styles.progressBarBg}>
-                    <LinearGradient
-                      colors={progress >= 100 ? [COLORS.success, COLORS.success] : w.colors}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={[styles.progressBarFill, { width: `${Math.min(progress, 100)}%` }]}
-                    />
+                    {/* Progress Bar */}
+                    <View style={styles.progressBarBg}>
+                      <LinearGradient
+                        colors={progress >= 100 ? [COLORS.success, COLORS.success] : w.colors}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                        style={[styles.progressBarFill, { width: `${Math.min(progress, 100)}%` }]}
+                      />
+                    </View>
                   </View>
                 </View>
 
                 {/* Timer Controls */}
                 <View style={styles.timerControls}>
                   <TouchableOpacity
-                    style={[styles.timerBtn, { flex: 1, backgroundColor: COLORS.primary }]}
+                    style={[
+                      styles.startSessionBtn,
+                      { backgroundColor: w.isActive ? COLORS.success : COLORS.primary }
+                    ]}
+                    disabled={w.isActive}
                     onPress={() => {
+                      if (!weight || !height) {
+                        setShowBMI(true);
+                        Alert.alert('BMI Required', 'Please enter your height and weight in the BMI Calculator before starting an activity.');
+                        return;
+                      }
+
                       const idx = workouts.findIndex(x => x.id === w.id);
                       setActiveSessionIndex(idx);
+                      // Force this session active and pause all others
+                      setWorkouts(prev => prev.map(workout => ({
+                        ...workout,
+                        isActive: workout.id === w.id,
+                      })));
                     }}
                   >
-                    <Text style={[styles.timerBtnTxt, { color: COLORS.textInverse, fontWeight: '700' }]}>▶ Start Session</Text>
+                    <Text style={[styles.timerBtnTxt, { color: COLORS.textInverse, fontWeight: '700' }]}>
+                      {w.isActive ? 'Activity Started' : '▶ Start Session'}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -354,6 +349,13 @@ export default function FitnessScreen({ navigation }) {
                     onPress={() => stopWorkout(w.id)}
                   >
                     <Text style={styles.timerBtnTxt}>⏹</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.timerBtn}
+                    onPress={() => resetWorkout(w.id)}
+                  >
+                    <Text style={styles.timerBtnTxt}>🔄</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -367,17 +369,15 @@ export default function FitnessScreen({ navigation }) {
                     <Text style={styles.timerBtnTxt}>⚙️</Text>
                   </TouchableOpacity>
 
-                  {(w.id !== '1' && w.id !== '2' && w.id !== '3' && w.id !== '4') && (
-                    <TouchableOpacity
-                      style={[styles.timerBtn, styles.deleteBtnColor]}
-                      onPress={() => Alert.alert('Delete', 'Remove this activity?', [
-                        { text: 'Cancel', onPress: () => { } },
-                        { text: 'Delete', onPress: () => deleteActivity(w.id), style: 'destructive' }
-                      ])}
-                    >
-                      <Text style={styles.timerBtnTxt}>🗑</Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={[styles.timerBtn, styles.deleteBtnColor]}
+                    onPress={() => Alert.alert('Delete', 'Remove this activity?', [
+                      { text: 'Cancel', onPress: () => { } },
+                      { text: 'Delete', onPress: () => deleteActivity(w.id), style: 'destructive' }
+                    ])}
+                  >
+                    <Text style={styles.timerBtnTxt}>🗑</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             );
@@ -399,13 +399,33 @@ export default function FitnessScreen({ navigation }) {
 
             <View style={styles.modalBody}>
               <Text style={styles.modalLabel}>Activity Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g., Weight Lifting"
-                placeholderTextColor={COLORS.textMuted}
-                value={activityName}
-                onChangeText={setActivityName}
-              />
+              <TouchableOpacity
+                style={[styles.modalInput, { justifyContent: 'center' }]}
+                onPress={() => setShowActivityDropdown(!showActivityDropdown)}
+              >
+                <Text style={{ color: activityName ? COLORS.textPrimary : COLORS.textMuted }}>
+                  {activityName || 'Select an activity...'}
+                </Text>
+              </TouchableOpacity>
+
+              {showActivityDropdown && (
+                <View style={styles.dropdownContainer}>
+                  <ScrollView nestedScrollEnabled style={{ maxHeight: 150 }}>
+                    {PRESET_ACTIVITIES.filter(act => !workouts.some(w => w.name === act)).map(act => (
+                      <TouchableOpacity
+                        key={act}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setActivityName(act);
+                          setShowActivityDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{act}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
               <Text style={styles.modalLabel}>Duration (minutes)</Text>
               <TextInput
@@ -416,19 +436,6 @@ export default function FitnessScreen({ navigation }) {
                 onChangeText={setActivityDuration}
                 keyboardType="number-pad"
               />
-
-              <Text style={styles.modalLabel}>Activity Type</Text>
-              <View style={styles.typeSelector}>
-                {['Cardio', 'Strength', 'Flex', 'Sports'].map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.typeBtn, activityType === type && styles.typeBtnActive]}
-                    onPress={() => setActivityType(type)}
-                  >
-                    <Text style={[styles.typeBtnTxt, activityType === type && styles.typeBtnTxtActive]}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
 
             </View>
 
@@ -467,7 +474,6 @@ export default function FitnessScreen({ navigation }) {
 
               return (
                 <View style={[styles.sessionSlide, { width: Dimensions.get('window').width }]}>
-                  <Text style={styles.sessionType}>{item.type.toUpperCase()}</Text>
                   <Text style={styles.sessionName}>{item.name}</Text>
 
                   <Animated.View style={[styles.sessionIconWrap, isActive && { transform: [{ scale: breathAnim }] }]}>
@@ -567,7 +573,7 @@ const styles = StyleSheet.create({
   bmiField: { flex: 1 },
   bmiFieldLabel: { fontSize: FONT.xs, color: 'rgba(255,255,255,0.8)', marginBottom: 6 },
   bmiInput: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: RADIUS.md, padding: SPACING.md },
-  bmiInputTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.md },
+  bmiInputTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.lg, padding: 0 },
   bmiResult: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   bmiVal: { fontSize: 48, fontWeight: '800', color: COLORS.textInverse },
   bmiLabelPill: { borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 6 },
@@ -601,11 +607,15 @@ const styles = StyleSheet.create({
   activityCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: SPACING.sm,
+    padding: SPACING.md,
     marginBottom: SPACING.sm,
+    flexDirection: 'column',
+    ...SHADOW.sm,
+  },
+  activityCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...SHADOW.sm,
+    marginBottom: SPACING.sm,
   },
   activityIconBox: {
     width: 50,
@@ -630,11 +640,18 @@ const styles = StyleSheet.create({
   progressBarBg: { width: '100%', height: 6, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 3 },
 
-  timerControls: { flexDirection: 'row', gap: 6 },
+  timerControls: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'center' },
+  startSessionBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: RADIUS.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   timerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
@@ -710,30 +727,27 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
 
-  typeSelector: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.lg, flexWrap: 'wrap' },
-  typeBtn: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.border,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  typeBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  typeBtnTxt: { color: COLORS.textSecondary, fontWeight: '600', fontSize: FONT.sm },
-  typeBtnTxtActive: { color: COLORS.textInverse },
+  addActivityBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, padding: SPACING.lg, alignItems: 'center', marginTop: SPACING.md },
+  addActivityBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.md },
 
-  addActivityBtn: {
-    backgroundColor: COLORS.success,
-    borderRadius: RADIUS.lg,
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
+  dropdownContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.md,
+    marginTop: -8, // pull it up slightly closer to input
+    overflow: 'hidden',
   },
-  addActivityBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.base },
-
+  dropdownItem: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  dropdownItemText: {
+    color: COLORS.textPrimary,
+    fontSize: FONT.sm,
+  },
   modalButtonRow: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.lg },
   modalBtn: { flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.lg, alignItems: 'center' },
   cancelBtn: { backgroundColor: COLORS.border },

@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────
 // AppContext — global dark mode + language state
 // ─────────────────────────────────────────────────────────────────
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { COLORS } from '../theme/theme';
+import { Alert } from 'react-native';
 
 // Dark color overrides
 export const DARK_COLORS = {
@@ -158,7 +159,13 @@ export const STRINGS = {
     },
 };
 
-// ─── Context ───────────────────────────────────────────────────────
+export const INITIAL_WORKOUTS = [
+    { id: '1', name: 'Morning Run', duration: '30 min', calories: 320, icon: '🏃', done: false, colors: COLORS.gradPrimary, threshold: 30, elapsed: 0, isActive: false },
+    { id: '2', name: 'Push-Up Circuit', duration: '20 min', calories: 180, icon: '💪', done: false, colors: COLORS.gradAccent, threshold: 20, elapsed: 0, isActive: false },
+    { id: '3', name: 'Yoga & Stretch', duration: '25 min', calories: 120, icon: '🧘', done: false, colors: COLORS.gradPurple, threshold: 25, elapsed: 0, isActive: false },
+    { id: '4', name: 'Cycling', duration: '45 min', calories: 450, icon: '🚴', done: false, colors: COLORS.gradBone, threshold: 45, elapsed: 0, isActive: false },
+];
+
 const DEFAULT_CTX = {
     isDark: false,
     toggleDark: () => { },
@@ -166,6 +173,10 @@ const DEFAULT_CTX = {
     changeLanguage: (_lang) => { },
     colors: COLORS,
     strings: STRINGS.en,
+    workouts: INITIAL_WORKOUTS,
+    setWorkouts: () => { },
+    activeSessionIndex: null,
+    setActiveSessionIndex: () => { },
 };
 
 const AppContext = createContext(DEFAULT_CTX);
@@ -174,14 +185,63 @@ export function AppProvider({ children }) {
     const [isDark, setIsDark] = useState(false);
     const [language, setLanguage] = useState('en');
 
+    // Global Fitness State
+    const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
+    const [activeSessionIndex, setActiveSessionIndex] = useState(null);
+
     const colors = isDark ? DARK_COLORS : COLORS;
     const strings = STRINGS[language] ?? STRINGS.en;
 
     const toggleDark = () => setIsDark(d => !d);
     const changeLanguage = (lang) => setLanguage(lang);
 
+    // Global Timer Effect
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setWorkouts(prev => {
+                let shouldAdvance = false;
+
+                const nextWorkouts = prev.map((w, index) => {
+                    const isCurrentlyActiveSession = activeSessionIndex === index;
+
+                    if (isCurrentlyActiveSession && w.elapsed < w.threshold * 60) {
+                        return { ...w, elapsed: w.elapsed + 1, isActive: true };
+                    } else if (isCurrentlyActiveSession && w.elapsed === w.threshold * 60) {
+                        if (!w.done) {
+                            shouldAdvance = true;
+                            return { ...w, elapsed: w.elapsed, isActive: false, done: true };
+                        }
+                    }
+
+                    // Strict singleton rule: If not the current session, it CANNOT be active.
+                    if (!isCurrentlyActiveSession && w.isActive) {
+                        return { ...w, isActive: false };
+                    }
+
+                    return w;
+                });
+
+                if (shouldAdvance && activeSessionIndex !== null) {
+                    if (activeSessionIndex < nextWorkouts.length - 1) {
+                        const nextIdx = activeSessionIndex + 1;
+                        setActiveSessionIndex(nextIdx);
+                        // Let the view handle scrolling based on index change
+                    } else {
+                        Alert.alert('Workout Complete!', 'You finished all activities!');
+                        setActiveSessionIndex(null);
+                    }
+                }
+                return nextWorkouts;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [activeSessionIndex]);
+
     return (
-        <AppContext.Provider value={{ isDark, toggleDark, language, changeLanguage, colors, strings }}>
+        <AppContext.Provider value={{
+            isDark, toggleDark, language, changeLanguage, colors, strings,
+            workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex
+        }}>
             {children}
         </AppContext.Provider>
     );
@@ -189,5 +249,9 @@ export function AppProvider({ children }) {
 
 // ─── Hook ─────────────────────────────────────────────────────────
 export function useAppTheme() {
+    return useContext(AppContext);
+}
+
+export function useFitness() {
     return useContext(AppContext);
 }
