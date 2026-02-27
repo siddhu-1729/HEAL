@@ -6,11 +6,12 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import { useAppTheme } from '../context/AppContext';
 
-const SCAN_TYPES = [
-    { id: 'brain', label: 'Brain Scan', icon: '🧠', description: 'MRI / CT for tumor detection', colors: COLORS.gradBrain },
-    { id: 'bone', label: 'Bone Scan', icon: '🦴', description: 'X-ray for fracture & density', colors: COLORS.gradBone },
-    { id: 'cellular', label: 'Cellular Scan', icon: '🔬', description: 'Microscopic cell-level analysis', colors: COLORS.gradCellular },
+const getScanTypes = (s) => [
+    { id: 'brain', label: s.brainScan, icon: '🧠', description: s.brainDesc, colors: COLORS.gradBrain },
+    { id: 'bone', label: s.boneScan, icon: '🦴', description: s.boneDesc, colors: COLORS.gradBone },
+    { id: 'cellular', label: s.cellularScan, icon: '🔬', description: s.cellularDesc, colors: COLORS.gradCellular },
 ];
 
 const DUMMY_RESULTS = {
@@ -20,6 +21,9 @@ const DUMMY_RESULTS = {
 };
 
 export default function UploadScreen({ navigation }) {
+    const { strings } = useAppTheme();
+    const SCAN_TYPES = getScanTypes(strings);
+
     const [selected, setSelected] = useState(null);
     const [filePicked, setFilePicked] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
@@ -44,8 +48,8 @@ export default function UploadScreen({ navigation }) {
     };
 
     const pickFile = () => {
-        if (!selected) { 
-            showToast('Choose a scan type first.', 'warning');
+        if (!selected) {
+            showToast(strings.chooseScanFirst, 'warning');
             return;
         }
         setShowFileOptions(true);
@@ -74,7 +78,7 @@ export default function UploadScreen({ navigation }) {
     const handleImageResponse = (response) => {
         if (response.didCancel) return;
         if (response.errorCode) {
-            showToast(response.errorMessage ?? 'Failed to pick file.', 'error');
+            showToast(response.errorMessage ?? strings.failedPick, 'error');
             return;
         }
         const asset = response.assets?.[0];
@@ -87,7 +91,7 @@ export default function UploadScreen({ navigation }) {
 
     const analyze = async () => {
         if (!selected || !filePicked || !fileAsset) {
-            showToast('Select scan type and upload a file first.', 'warning');
+            showToast(strings.selectScanUpload, 'warning');
             return;
         }
 
@@ -111,11 +115,11 @@ export default function UploadScreen({ navigation }) {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.detail || data.error || 'Failed to upload scan');
+                throw new Error(data.detail || data.error || strings.uploadError);
             }
 
             console.log('Upload successful:', data);
-            showToast('Scan uploaded successfully!', 'success');
+            showToast(strings.scanUploaded, 'success');
 
             // Navigate to Result screen with real or dummy data depending on response structure
             navigation.navigate('Result', {
@@ -125,7 +129,7 @@ export default function UploadScreen({ navigation }) {
 
         } catch (error) {
             console.error('Upload Error:', error);
-            showToast(error.message || 'An error occurred while uploading the scan.', 'error');
+            showToast(error.message || strings.uploadError, 'error');
         } finally {
             setAnalyzing(false);
         }
@@ -144,15 +148,15 @@ export default function UploadScreen({ navigation }) {
                     <View style={styles.headerIconWrap}>
                         <Text style={styles.headerMainIcon}>🔬</Text>
                     </View>
-                    <Text style={styles.headerTitle}>AI Scan Analysis</Text>
-                    <Text style={styles.headerSub}>Upload your medical scan for AI-powered prediction</Text>
+                    <Text style={styles.headerTitle}>{strings.aiScanAnalysis}</Text>
+                    <Text style={styles.headerSub}>{strings.uploadScanSub}</Text>
                 </LinearGradient>
 
                 {/* Step 1 — Scan Type */}
                 <View style={styles.section}>
                     <View style={styles.stepHeader}>
                         <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>1</Text></View>
-                        <Text style={styles.stepTitle}>Select Scan Type</Text>
+                        <Text style={styles.stepTitle}>{strings.selectScanType}</Text>
                     </View>
                     {SCAN_TYPES.map(scan => {
                         const isSelected = selected === scan.id;
@@ -181,12 +185,12 @@ export default function UploadScreen({ navigation }) {
                 <View style={styles.section}>
                     <View style={styles.stepHeader}>
                         <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>2</Text></View>
-                        <Text style={styles.stepTitle}>Upload Scan File</Text>
+                        <Text style={styles.stepTitle}>{strings.uploadScanFile}</Text>
                     </View>
                     <TouchableOpacity style={[styles.uploadBox, filePicked && styles.uploadBoxDone]} onPress={pickFile} activeOpacity={0.8}>
                         <Text style={styles.uploadIcon}>{filePicked ? '✅' : '📂'}</Text>
-                        <Text style={styles.uploadTitle}>{filePicked ? (fileName ?? 'File selected') : 'Tap to upload'}</Text>
-                        <Text style={styles.uploadSub}>{filePicked ? 'Ready for analysis' : 'Supports JPG · PNG · DICOM files only'}</Text>
+                        <Text style={styles.uploadTitle}>{filePicked ? (fileName ?? strings.fileSelected) : strings.tapToUpload}</Text>
+                        <Text style={styles.uploadSub}>{filePicked ? strings.readyForAnalysis : strings.supportsFiles}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -195,7 +199,7 @@ export default function UploadScreen({ navigation }) {
                     <View style={styles.infoBanner}>
                         <Text style={styles.infoIconTxt}>🔒</Text>
                         <Text style={styles.infoText}>
-                            All scans are encrypted and processed privately by HealVerse AI. Results are generated using trained medical-grade models.
+                            {strings.privacyInfo}
                         </Text>
                     </View>
                 </View>
@@ -208,10 +212,10 @@ export default function UploadScreen({ navigation }) {
                         {analyzing ? (
                             <View style={styles.analyzeRow}>
                                 <ActivityIndicator color={COLORS.textInverse} size="small" />
-                                <Text style={[styles.analyzeTxt, { marginLeft: 10 }]}>Analyzing...</Text>
+                                <Text style={[styles.analyzeTxt, { marginLeft: 10 }]}>{strings.analyzing}</Text>
                             </View>
                         ) : (
-                            <Text style={styles.analyzeTxt}>🔍  Analyze Scan</Text>
+                            <Text style={styles.analyzeTxt}>🔍  {strings.analyzeScan}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -227,24 +231,24 @@ export default function UploadScreen({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Upload File</Text>
-                        <Text style={styles.modalSubtitle}>Choose an option</Text>
+                        <Text style={styles.modalTitle}>{strings.uploadFileTitle}</Text>
+                        <Text style={styles.modalSubtitle}>{strings.chooseOption}</Text>
 
                         <TouchableOpacity style={styles.modalButton} onPress={handleCameraLaunch}>
                             <Text style={styles.modalButtonIcon}>📷</Text>
-                            <Text style={styles.modalButtonText}>Take Photo</Text>
+                            <Text style={styles.modalButtonText}>{strings.takePhoto}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.modalButton} onPress={handleGalleryLaunch}>
                             <Text style={styles.modalButtonIcon}>🖼️</Text>
-                            <Text style={styles.modalButtonText}>Choose from Gallery</Text>
+                            <Text style={styles.modalButtonText}>{strings.chooseGallery}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={[styles.modalButton, styles.modalButtonCancel]}
                             onPress={() => setShowFileOptions(false)}
                         >
-                            <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            <Text style={styles.modalButtonTextCancel}>{strings.cancel}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -258,8 +262,9 @@ export default function UploadScreen({ navigation }) {
                     </Text>
                     <Text style={styles.toastText}>{toast.message}</Text>
                 </View>
-            )}
-        </SafeAreaView>
+            )
+            }
+        </SafeAreaView >
     );
 }
 

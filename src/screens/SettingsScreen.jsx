@@ -10,46 +10,50 @@ import { useAppTheme } from '../context/AppContext';
 const LANG_MAP = { English: 'en', Telugu: 'te', Hindi: 'hi', Tamil: 'ta' };
 const LANG_LABELS = { en: 'English', te: 'Telugu', hi: 'Hindi', ta: 'Tamil' };
 
-const SETTINGS_SECTIONS = [
+const getSettingsSections = (strings) => [
     {
-        title: 'Notifications',
+        title: strings.notifsTitle,
         items: [
-            { id: 'medicine', icon: '💊', label: 'Medicine Reminders', sub: 'Get notified to take your medicines', toggle: true, default: true },
-            { id: 'workout', icon: '🏃', label: 'Workout Reminders', sub: 'Daily fitness activity alerts', toggle: true, default: true },
-            { id: 'healthTip', icon: '💡', label: 'Health Tips', sub: 'Daily health & wellness tips', toggle: true, default: false },
-            { id: 'appt', icon: '📅', label: 'Appointment Alerts', sub: 'Upcoming appointment reminders', toggle: true, default: true },
+            { id: 'medicine', icon: '💊', label: strings.medReminders, sub: strings.medSub, toggle: true, default: true },
+            { id: 'workout', icon: '🏃', label: strings.workoutReminders, sub: strings.workoutSub, toggle: true, default: true },
+            { id: 'healthTip', icon: '💡', label: strings.healthTips, sub: strings.healthTipsSub, toggle: true, default: false },
+            { id: 'appt', icon: '📅', label: strings.apptAlerts, sub: strings.apptSub, toggle: true, default: true },
         ],
     },
     {
-        title: 'Privacy & Data',
+        title: strings.privacyTitle,
         items: [
-            { id: 'healthSync', icon: '❤️', label: 'Health Sync', sub: 'Sync with device sensors', toggle: true, default: true },
-            { id: 'dataShare', icon: '🔗', label: 'Share with Doctor', sub: 'Allow doctor to view your reports', toggle: true, default: false },
-            { id: 'analytics', icon: '📊', label: 'App Analytics', sub: 'Help improve the app (anonymous)', toggle: true, default: true },
+            { id: 'healthSync', icon: '❤️', label: strings.healthSync, sub: strings.healthSyncSub, toggle: true, default: true },
+            { id: 'dataShare', icon: '🔗', label: strings.shareDoc, sub: strings.shareDocSub, toggle: true, default: false },
+            { id: 'analytics', icon: '📊', label: strings.appAnalytics, sub: strings.appAnalyticsSub, toggle: true, default: true },
         ],
     },
     {
-        title: 'Support',
+        title: strings.supportTitle,
         items: [
-            { id: 'help', icon: '💬', label: 'Help & Support', sub: 'FAQs and contact us', toggle: false, action: () => Alert.alert('Help', 'Opening support...') },
-            { id: 'privacy', icon: '🔒', label: 'Privacy Policy', sub: 'Read our privacy terms', toggle: false, action: () => Alert.alert('Privacy', 'Opening...') },
-            { id: 'terms', icon: '📄', label: 'Terms of Service', sub: 'App terms & conditions', toggle: false, action: () => Alert.alert('Terms', 'Opening...') },
-            { id: 'rate', icon: '⭐', label: 'Rate the App', sub: 'Share your feedback', toggle: false, action: () => Alert.alert('Rate', 'Opening store...') },
-            { id: 'version', icon: 'ℹ️', label: 'App Version', sub: 'Heal-verse v1.0.0', toggle: false, action: () => { } },
+            { id: 'help', icon: '💬', label: strings.helpSupport, sub: strings.helpSub, toggle: false, action: () => Alert.alert('Help', 'Opening support...') },
+            { id: 'privacy', icon: '🔒', label: strings.privacyPolicy, sub: strings.privacySub, toggle: false, action: () => Alert.alert('Privacy', 'Opening...') },
+            { id: 'terms', icon: '📄', label: strings.terms, sub: strings.termsSub, toggle: false, action: () => Alert.alert('Terms', 'Opening...') },
+            { id: 'rate', icon: '⭐', label: strings.rateApp, sub: strings.rateSub, toggle: false, action: () => Alert.alert('Rate', 'Opening store...') },
+            { id: 'version', icon: 'ℹ️', label: strings.appVersion, sub: strings.appVersionSub, toggle: false, action: () => { } },
         ],
     },
 ];
 
 export default function SettingsScreen({ navigation }) {
-    const { isDark, toggleDark, language, changeLanguage } = useAppTheme();
+    const { isDark, toggleDark, language, changeLanguage, strings } = useAppTheme();
     const selectedLang = LANG_LABELS[language] ?? 'English';
     const setSelectedLang = (label) => changeLanguage(LANG_MAP[label]);
     const darkMode = isDark;
     const setDarkMode = () => toggleDark();
 
-    const initToggles = {};
-    SETTINGS_SECTIONS.forEach(sec => sec.items.forEach(i => { if (i.toggle) initToggles[i.id] = i.default; }));
-    const [toggles, setToggles] = useState(initToggles);
+    const SECTIONS = getSettingsSections(strings);
+
+    const [toggles, setToggles] = useState(() => {
+        const initToggles = {};
+        SECTIONS.forEach(sec => sec.items.forEach(i => { if (i.toggle) initToggles[i.id] = i.default; }));
+        return initToggles;
+    });
     const setToggle = (id, val) => setToggles(prev => ({ ...prev, [id]: val }));
 
     const LANGUAGES = Object.keys(LANG_MAP);
@@ -67,17 +71,17 @@ export default function SettingsScreen({ navigation }) {
                     <View style={styles.headerIconWrap}>
                         <Text style={styles.headerMainIcon}>⚙️</Text>
                     </View>
-                    <Text style={styles.headerTitle}>Settings</Text>
-                    <Text style={styles.headerSub}>Customize your Heal-verse experience</Text>
+                    <Text style={styles.headerTitle}>{strings.settings}</Text>
+                    <Text style={styles.headerSub}>{strings.customizeSettings}</Text>
                 </LinearGradient>
 
                 {/* ── Language ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Language</Text>
+                    <Text style={styles.sectionTitle}>{strings.language}</Text>
                     <View style={styles.card}>
                         <View style={styles.langHeader}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🌐</Text></View>
-                            <Text style={styles.rowValue}>Select Language</Text>
+                            <Text style={styles.rowValue}>{strings.selectLanguage}</Text>
                         </View>
                         <View style={styles.langChips}>
                             {LANGUAGES.map(lang => (
@@ -95,13 +99,13 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* ── Appearance ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Appearance</Text>
+                    <Text style={styles.sectionTitle}>{strings.appearance}</Text>
                     <View style={styles.card}>
                         <View style={styles.settingRow}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🌙</Text></View>
                             <View style={styles.rowContent}>
-                                <Text style={styles.rowValue}>Dark Mode</Text>
-                                <Text style={styles.rowSub}>Switch to dark theme</Text>
+                                <Text style={styles.rowValue}>{strings.darkMode}</Text>
+                                <Text style={styles.rowSub}>{strings.switchDark}</Text>
                             </View>
                             <Switch value={darkMode} onValueChange={setDarkMode}
                                 trackColor={{ false: COLORS.border, true: COLORS.primary }}
@@ -111,7 +115,7 @@ export default function SettingsScreen({ navigation }) {
                 </View>
 
                 {/* ── Dynamic Sections ── */}
-                {SETTINGS_SECTIONS.map(sec => (
+                {SECTIONS.map(sec => (
                     <View key={sec.title} style={styles.section}>
                         <Text style={styles.sectionTitle}>{sec.title}</Text>
                         <View style={styles.card}>
@@ -145,10 +149,10 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* ── Danger Zone ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account</Text>
+                    <Text style={styles.sectionTitle}>{strings.accountTitle}</Text>
                     <View style={styles.card}>
                         <TouchableOpacity style={styles.settingRow}
-                            onPress={() => Alert.alert('Delete Account', 'This action is irreversible. Are you sure?', [
+                            onPress={() => Alert.alert(strings.deleteAccount, 'This action is irreversible. Are you sure?', [
                                 { text: 'Cancel', style: 'cancel' },
                                 { text: 'Delete', style: 'destructive' },
                             ])}>
@@ -156,8 +160,8 @@ export default function SettingsScreen({ navigation }) {
                                 <Text style={styles.rowIcon}>🗑️</Text>
                             </View>
                             <View style={styles.rowContent}>
-                                <Text style={[styles.rowValue, { color: COLORS.danger }]}>Delete Account</Text>
-                                <Text style={styles.rowSub}>Permanently remove your data</Text>
+                                <Text style={[styles.rowValue, { color: COLORS.danger }]}>{strings.deleteAccount}</Text>
+                                <Text style={styles.rowSub}>{strings.deleteSub}</Text>
                             </View>
                             <Text style={[styles.chevron, { color: COLORS.danger }]}>›</Text>
                         </TouchableOpacity>

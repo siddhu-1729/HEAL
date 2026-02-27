@@ -7,19 +7,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import { useAppTheme } from '../context/AppContext';
 
-
-const QUICK_ACTIONS = [
-  { id: 1, title: 'AI Scan', subtitle: 'Upload & Analyse', icon: '🔬', color: COLORS.gradBrain },
-  { id: 2, title: 'Records', subtitle: 'Medical History', icon: '📋', color: COLORS.gradPink },
-  { id: 3, title: 'AI Assistant', subtitle: 'Ask HealVerse', icon: '🤖', color: COLORS.gradAccent },
-  { id: 4, title: 'Scripts', subtitle: 'Prescriptions', icon: '💊', color: COLORS.gradSuccess },
+const getQuickActions = (strings) => [
+  { id: 1, title: strings.aiScan, subtitle: strings.aiScanSub, icon: '🔬', color: COLORS.gradBrain },
+  { id: 2, title: strings.records, subtitle: strings.recordsSub, icon: '📋', color: COLORS.gradPink },
+  { id: 3, title: strings.aiAssistant, subtitle: strings.aiAssistantSub, icon: '🤖', color: COLORS.gradAccent },
+  { id: 4, title: strings.scripts, subtitle: strings.scriptsSub, icon: '💊', color: COLORS.gradSuccess },
 ];
 
-const HEALTH_METRICS = [
-  { label: 'Heart Rate', value: '72', unit: 'bpm', icon: '❤️', color: COLORS.danger },
-  { label: 'BP', value: '120/80', unit: 'mmHg', icon: '📊', color: COLORS.primary },
-  { label: 'Temp', value: '98.6', unit: '°F', icon: '🌡️', color: COLORS.warning },
+const getHealthMetrics = (strings) => [
+  { label: strings.heartRate, value: '72', unit: 'bpm', icon: '❤️', color: COLORS.danger },
+  { label: strings.bp, value: '120/80', unit: 'mmHg', icon: '📊', color: COLORS.primary },
+  { label: strings.temp, value: '98.6', unit: '°F', icon: '🌡️', color: COLORS.warning },
 ];
 
 const UPCOMING_APPOINTMENTS = [
@@ -28,6 +28,9 @@ const UPCOMING_APPOINTMENTS = [
 ];
 
 export default function HomeScreen({ navigation }) {
+  const { strings } = useAppTheme();
+  const QUICK_ACTIONS = getQuickActions(strings);
+  const HEALTH_METRICS = getHealthMetrics(strings);
   const [userName, setUserName] = useState('User');
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function HomeScreen({ navigation }) {
     const unsub = navigation.addListener('focus', loadName);
     return () => { mounted = false; unsub(); };
   }, [navigation]);
-  
+
   const handleQuickAction = (id) => {
     if (id === 1) navigation.navigate('Upload');
     else if (id === 2) navigation.navigate('History');
@@ -98,7 +101,7 @@ export default function HomeScreen({ navigation }) {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>Hello, {userName}</Text>
+            <Text style={styles.greeting}>{strings.hello}, {userName}</Text>
             <Text style={styles.dateText}>
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </Text>
@@ -109,9 +112,9 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.bellBadge}><Text style={styles.bellBadgeTxt}>2</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
-                <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
-                  <Text style={styles.avatarText}>{userName && userName.length ? userName[0] : 'U'}</Text>
-                </LinearGradient>
+              <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
+                <Text style={styles.avatarText}>{userName && userName.length ? userName[0] : 'U'}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -120,19 +123,19 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.px}>
           <LinearGradient colors={COLORS.gradPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.statusBanner}>
             <View style={styles.statusLeft}>
-              <Text style={styles.statusLabel}>Your Health Status</Text>
-              <Text style={styles.statusValue}>Excellent 🎉</Text>
-              <Text style={styles.statusSub}>All vitals in normal range</Text>
+              <Text style={styles.statusLabel}>{strings.healthStatus}</Text>
+              <Text style={styles.statusValue}>{strings.statusExcellent}</Text>
+              <Text style={styles.statusSub}>{strings.statusNormal}</Text>
             </View>
             <TouchableOpacity style={styles.statusBtn}>
-              <Text style={styles.statusBtnText}>View →</Text>
+              <Text style={styles.statusBtnText}>{strings.viewBtn}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
 
         {/* ── Quick actions ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{strings.quickActions}</Text>
           <FlatList
             data={QUICK_ACTIONS} renderItem={renderQuickAction}
             keyExtractor={i => i.id.toString()} numColumns={2}
@@ -143,7 +146,7 @@ export default function HomeScreen({ navigation }) {
         {/* ── Health metrics ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Health Metrics</Text>
+            <Text style={styles.sectionTitle}>{strings.healthMetrics}</Text>
             {/* <TouchableOpacity onPress={() => navigation.navigate('fitness')}>
               <Text style={styles.seeAll}>See all →</Text>
             </TouchableOpacity> */}
@@ -153,13 +156,13 @@ export default function HomeScreen({ navigation }) {
             keyExtractor={i => i.label} numColumns={3}
             columnWrapperStyle={styles.metricRow} scrollEnabled={false}
           />
-        </View> 
+        </View>
 
         {/* ── Upcoming appointments ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-            <TouchableOpacity><Text style={styles.seeAll}>See all →</Text></TouchableOpacity>
+            <Text style={styles.sectionTitle}>{strings.appointments}</Text>
+            <TouchableOpacity><Text style={styles.seeAll}>{strings.seeAll}</Text></TouchableOpacity>
           </View>
           <FlatList
             data={UPCOMING_APPOINTMENTS} renderItem={renderAppointment}
@@ -171,7 +174,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.px}>
           <TouchableOpacity style={styles.emergencyBtn} activeOpacity={0.85}>
             <Text style={styles.emergencyIcon}>🚨</Text>
-            <Text style={styles.emergencyText}>Emergency Contact</Text>
+            <Text style={styles.emergencyText}>{strings.emergencyContact || 'Emergency Contact'}</Text>
           </TouchableOpacity>
         </View>
 

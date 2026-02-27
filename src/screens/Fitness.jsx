@@ -9,23 +9,23 @@ import Video from 'react-native-video';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import { useAppTheme, useFitness } from '../context/AppContext';
 
-const DAILY_STATS = [
-  { label: 'Steps', value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
-  { label: 'Calories', value: '1,840', target: '2,200', icon: '🔥', pct: 84, color: COLORS.danger },
-  { label: 'Water', value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
-  { label: 'Sleep', value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
+const getDailyStats = (s) => [
+  { label: s.steps, value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
+  { label: s.calories, value: '1,840', target: '2,200', icon: '🔥', pct: 84, color: COLORS.danger },
+  { label: s.water, value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
+  { label: s.sleep, value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
 ];
-const PRESET_ACTIVITIES = [
-  'Running',
-  'Walking',
-  'Cycling',
-  'Swimming',
-  'Push-Up Circuit',
-  'Weight Lifting',
-  'Yoga & Stretch',
-  'Meditation',
-  'HIIT',
-  'Sports / Other'
+const getPresetActivities = (s) => [
+  { name: s.actRunning, key: 'Running' },
+  { name: s.actWalking, key: 'Walking' },
+  { name: s.actCycling, key: 'Cycling' },
+  { name: s.actSwimming, key: 'Swimming' },
+  { name: s.actPushup, key: 'Push-Up Circuit' },
+  { name: s.actWeightLifting, key: 'Weight Lifting' },
+  { name: s.actYoga, key: 'Yoga & Stretch' },
+  { name: s.actMeditation, key: 'Meditation' },
+  { name: s.actHIIT, key: 'HIIT' },
+  { name: s.actSports, key: 'Sports / Other' }
 ];
 
 const WEEKLY = [
@@ -53,7 +53,10 @@ const getVideoSource = (item) => {
 };
 
 export default function FitnessScreen({ navigation }) {
+  const { strings } = useAppTheme();
   const { workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex } = useFitness();
+  const DAILY_STATS = getDailyStats(strings);
+  const PRESET_ACTIVITIES = getPresetActivities(strings);
 
   const [water, setWater] = useState(6);
   const [showBMI, setShowBMI] = useState(false);
@@ -121,13 +124,14 @@ export default function FitnessScreen({ navigation }) {
 
   const addActivity = () => {
     if (!activityName.trim() || !activityDuration.trim()) {
-      Alert.alert('Error', 'Please fill all fields');
+      Alert.alert(strings.errorTitle, strings.errorEmptyFields);
       return;
     }
     const newActivity = {
       id: Date.now().toString(),
       name: activityName,
-      duration: `${activityDuration} min`,
+      keyName: PRESET_ACTIVITIES.find(a => a.name === activityName)?.key || activityName,
+      duration: `${activityDuration} ${strings.minutes.replace(':', '')}`,
       calories: Math.floor(Math.random() * 300 + 100),
       icon: '🏋️',
       done: false,
@@ -160,7 +164,7 @@ export default function FitnessScreen({ navigation }) {
   const doneCount = workouts.filter(w => w.done).length;
 
   const bmi = weight && height ? (parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1) : null;
-  const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+  const bmiLabel = bmi < 18.5 ? strings.underweight : bmi < 25 ? strings.normal : bmi < 30 ? strings.overweight : strings.obese;
   const bmiColor = bmi < 18.5 ? COLORS.info : bmi < 25 ? COLORS.success : bmi < 30 ? COLORS.warning : COLORS.danger;
 
   return (
@@ -171,14 +175,14 @@ export default function FitnessScreen({ navigation }) {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.pageTitle}>Fitness</Text>
-            <Text style={styles.pageSub}>Workout & Timer</Text>
+            <Text style={styles.pageTitle}>{strings.fitness}</Text>
+            <Text style={styles.pageSub}>{strings.workoutTimer}</Text>
           </View>
           <TouchableOpacity
             style={styles.bmiBtn}
             onPress={() => setShowBMI(s => !s)}
           >
-            <Text style={styles.bmiBtnTxt}>⚖️ BMI</Text>
+            <Text style={styles.bmiBtnTxt}>⚖️ {strings.bmi}</Text>
           </TouchableOpacity>
         </View>
 
@@ -186,10 +190,10 @@ export default function FitnessScreen({ navigation }) {
         {showBMI && (
           <View style={styles.px}>
             <LinearGradient colors={COLORS.gradPrimary} style={styles.bmiCard}>
-              <Text style={styles.bmiTitle}>BMI Calculator</Text>
+              <Text style={styles.bmiTitle}>{strings.bmiCalc}</Text>
               <View style={styles.bmiInputs}>
                 <View style={styles.bmiField}>
-                  <Text style={styles.bmiFieldLabel}>Weight (kg)</Text>
+                  <Text style={styles.bmiFieldLabel}>{strings.weightKg}</Text>
                   <View style={styles.bmiInput}>
                     <TextInput
                       style={styles.bmiInputTxt}
@@ -203,7 +207,7 @@ export default function FitnessScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={styles.bmiField}>
-                  <Text style={styles.bmiFieldLabel}>Height (cm)</Text>
+                  <Text style={styles.bmiFieldLabel}>{strings.heightCm}</Text>
                   <View style={styles.bmiInput}>
                     <TextInput
                       style={styles.bmiInputTxt}
@@ -231,7 +235,7 @@ export default function FitnessScreen({ navigation }) {
 
         {/* ── Daily Stats ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Stats</Text>
+          <Text style={styles.sectionTitle}>{strings.todaysStats}</Text>
           <View style={styles.statsGrid}>
             {DAILY_STATS.map(s => (
               <View key={s.label} style={styles.statCard}>
@@ -250,8 +254,8 @@ export default function FitnessScreen({ navigation }) {
         {/* ── Water tracker ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Water Intake</Text>
-            <Text style={styles.seeAll}>{water} / 8 glasses</Text>
+            <Text style={styles.sectionTitle}>{strings.waterIntake}</Text>
+            <Text style={styles.seeAll}>{water} / 8 {strings.glasses}</Text>
           </View>
           <View style={styles.waterCard}>
             <View style={styles.glassRow}>
@@ -273,12 +277,12 @@ export default function FitnessScreen({ navigation }) {
         {/* ── Fitness Activities with Timer ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Fitness Activities</Text>
+            <Text style={styles.sectionTitle}>{strings.fitnessActivities}</Text>
             <TouchableOpacity
               onPress={() => setShowAddActivity(true)}
               style={styles.addBtn}
             >
-              <Text style={styles.addBtnTxt}>+ Add</Text>
+              <Text style={styles.addBtnTxt}>{strings.addBtn}</Text>
             </TouchableOpacity>
           </View>
 
@@ -295,13 +299,15 @@ export default function FitnessScreen({ navigation }) {
                   </LinearGradient>
 
                   <View style={styles.activityInfo}>
-                    <Text style={[styles.activityName, w.done && styles.activityDoneText]}>{w.name}</Text>
-                    <Text style={styles.activityMeta}>{w.calories} kcal</Text>
+                    <Text style={[styles.activityName, w.done && styles.activityDoneText]}>
+                      {PRESET_ACTIVITIES.find(a => a.key === w.keyName)?.name || w.name}
+                    </Text>
+                    <Text style={styles.activityMeta}>{w.calories} {strings.kcal}</Text>
 
                     {/* Timer Display */}
                     <View style={styles.timerSection}>
-                      <Text style={styles.timerLabel}>Time: <Text style={[styles.timerValue, isCompleted && styles.timerCompleted]}>{formatTime(w.elapsed)}</Text> / {w.threshold}:00</Text>
-                      {isCompleted && <Text style={styles.completedBadge}>✓ Completed</Text>}
+                      <Text style={styles.timerLabel}>{strings.timeLabel} <Text style={[styles.timerValue, isCompleted && styles.timerCompleted]}>{formatTime(w.elapsed)}</Text> / {w.threshold}:00</Text>
+                      {isCompleted && <Text style={styles.completedBadge}>{strings.completed}</Text>}
                     </View>
 
                     {/* Progress Bar */}
@@ -326,7 +332,7 @@ export default function FitnessScreen({ navigation }) {
                     onPress={() => {
                       if (!weight || !height) {
                         setShowBMI(true);
-                        Alert.alert('BMI Required', 'Please enter your height and weight in the BMI Calculator before starting an activity.');
+                        Alert.alert(strings.bmiReqTitle, strings.bmiReqMsg);
                         return;
                       }
 
@@ -340,7 +346,7 @@ export default function FitnessScreen({ navigation }) {
                     }}
                   >
                     <Text style={[styles.timerBtnTxt, { color: COLORS.textInverse, fontWeight: '700' }]}>
-                      {w.isActive ? 'Activity Started' : '▶ Start Session'}
+                      {w.isActive ? strings.activityStarted : strings.startSession}
                     </Text>
                   </TouchableOpacity>
 
@@ -364,9 +370,9 @@ export default function FitnessScreen({ navigation }) {
 
                   <TouchableOpacity
                     style={[styles.timerBtn, styles.deleteBtnColor]}
-                    onPress={() => Alert.alert('Delete', 'Remove this activity?', [
-                      { text: 'Cancel', onPress: () => { } },
-                      { text: 'Delete', onPress: () => deleteActivity(w.id), style: 'destructive' }
+                    onPress={() => Alert.alert(strings.deleteAccount ? strings.deleteAccount.split(' ')[0] : 'Delete', strings.removeActivity, [
+                      { text: strings.cancel, onPress: () => { } },
+                      { text: strings.deleteAccount ? strings.deleteAccount.split(' ')[0] : 'Delete', onPress: () => deleteActivity(w.id), style: 'destructive' }
                     ])}
                   >
                     <Text style={styles.timerBtnTxt}>🗑</Text>
@@ -384,46 +390,46 @@ export default function FitnessScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Activity</Text>
+              <Text style={styles.modalTitle}>{strings.addNewActivity}</Text>
               <TouchableOpacity onPress={() => setShowAddActivity(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalLabel}>Activity Name</Text>
+              <Text style={styles.modalLabel}>{strings.activityName}</Text>
               <TouchableOpacity
                 style={[styles.modalInput, { justifyContent: 'center' }]}
                 onPress={() => setShowActivityDropdown(!showActivityDropdown)}
               >
                 <Text style={{ color: activityName ? COLORS.textPrimary : COLORS.textMuted }}>
-                  {activityName || 'Select an activity...'}
+                  {activityName || strings.selectActivity}
                 </Text>
               </TouchableOpacity>
 
               {showActivityDropdown && (
                 <View style={styles.dropdownContainer}>
                   <ScrollView nestedScrollEnabled style={{ maxHeight: 150 }}>
-                    {PRESET_ACTIVITIES.filter(act => !workouts.some(w => w.name === act)).map(act => (
+                    {PRESET_ACTIVITIES.filter(act => !workouts.some(w => w.name === act.name || w.keyName === act.name)).map(act => (
                       <TouchableOpacity
-                        key={act}
+                        key={act.key}
                         style={styles.dropdownItem}
                         onPress={() => {
-                          setActivityName(act);
+                          setActivityName(act.name);
                           setShowActivityDropdown(false);
                         }}
                       >
-                        <Text style={styles.dropdownItemText}>{act}</Text>
+                        <Text style={styles.dropdownItemText}>{act.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
               )}
 
-              <Text style={styles.modalLabel}>Duration (minutes)</Text>
+              <Text style={styles.modalLabel}>{strings.durationMin}</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g., 30"
+                placeholder={strings.eg30}
                 placeholderTextColor={COLORS.textMuted}
                 value={activityDuration}
                 onChangeText={setActivityDuration}
@@ -433,7 +439,7 @@ export default function FitnessScreen({ navigation }) {
             </View>
 
             <TouchableOpacity style={styles.addActivityBtn} onPress={addActivity}>
-              <Text style={styles.addActivityBtnTxt}>Add Activity</Text>
+              <Text style={styles.addActivityBtnTxt}>{strings.addActivityBtn}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -443,7 +449,7 @@ export default function FitnessScreen({ navigation }) {
       <Modal visible={activeSessionIndex !== null} animationType="slide" transparent={false}>
         <SafeAreaView style={[styles.container, { backgroundColor: COLORS.background }]}>
           <TouchableOpacity style={styles.closeSessionBtn} onPress={() => setActiveSessionIndex(null)}>
-            <Text style={styles.closeSessionTxt}>✕ Close Session</Text>
+            <Text style={styles.closeSessionTxt}>{strings.closeSession}</Text>
           </TouchableOpacity>
 
           <FlatList
@@ -467,7 +473,9 @@ export default function FitnessScreen({ navigation }) {
 
               return (
                 <View style={[styles.sessionSlide, { width: Dimensions.get('window').width }]}>
-                  <Text style={styles.sessionName}>{item.name}</Text>
+                  <Text style={styles.sessionTitle}>
+                    {PRESET_ACTIVITIES.find(a => a.key === item.keyName)?.name || item.name}
+                  </Text>
 
                   <Animated.View style={[styles.sessionIconWrap, isActive && { transform: [{ scale: breathAnim }] }]}>
                     <LinearGradient colors={item.done ? [COLORS.success, COLORS.successLight] : item.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sessionIconBoxModal}>
@@ -489,7 +497,7 @@ export default function FitnessScreen({ navigation }) {
                   </Animated.View>
 
                   <Text style={styles.sessionTime}>{formatTime(item.elapsed)}</Text>
-                  <Text style={styles.sessionTarget}>Target: {item.threshold}:00</Text>
+                  <Text style={styles.sessionTarget}>{strings.target} {item.threshold}:00</Text>
 
                   <View style={styles.sessionProgressBg}>
                     <LinearGradient
@@ -499,10 +507,10 @@ export default function FitnessScreen({ navigation }) {
                     />
                   </View>
 
-                  {item.done && <Text style={styles.sessionDoneBadge}>✓ Workout Completed!</Text>}
+                  {item.done && <Text style={styles.sessionDoneBadge}>{strings.workoutCompleted}</Text>}
 
                   {!item.done && (
-                    <Text style={styles.sessionSwipeHint}>{'‹ Swipe to browse workouts ›'}</Text>
+                    <Text style={styles.sessionSwipeHint}>{strings.swipeToBrowse}</Text>
                   )}
                 </View>
               );
@@ -515,11 +523,11 @@ export default function FitnessScreen({ navigation }) {
       <Modal visible={showThresholdModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContentSmall}>
-            <Text style={styles.modalTitle}>Set Time Threshold</Text>
-            <Text style={styles.thresholdLabel}>Minutes:</Text>
+            <Text style={styles.modalTitle}>{strings.setTimeThreshold}</Text>
+            <Text style={styles.thresholdLabel}>{strings.minutes}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Enter minutes"
+              placeholder={strings.enterMinutes}
               placeholderTextColor={COLORS.textMuted}
               value={editingThreshold}
               onChangeText={setEditingThreshold}
@@ -534,13 +542,13 @@ export default function FitnessScreen({ navigation }) {
                   setEditingThreshold('');
                 }}
               >
-                <Text style={styles.modalBtnTxt}>Cancel</Text>
+                <Text style={styles.modalBtnTxt}>{strings.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.confirmBtn]}
                 onPress={() => updateThreshold(editingId)}
               >
-                <Text style={[styles.modalBtnTxt, { color: COLORS.textInverse }]}>Save</Text>
+                <Text style={[styles.modalBtnTxt, { color: COLORS.textInverse }]}>{strings.save}</Text>
               </TouchableOpacity>
             </View>
           </View>

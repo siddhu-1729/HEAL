@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import { useAppTheme } from '../context/AppContext';
 
-const HISTORY_DATA = [
-    { id: '1', scanType: 'brain', label: 'Brain Scan', icon: '🧠', risk: 'High', probability: 82, date: 'Feb 24, 2026', time: '6:30 PM', status: 'Reviewed', colors: COLORS.gradBrain },
-    { id: '2', scanType: 'bone', label: 'Bone Scan', icon: '🦴', risk: 'Moderate', probability: 45, date: 'Feb 20, 2026', time: '11:00 AM', status: 'Pending', colors: COLORS.gradBone },
-    { id: '3', scanType: 'cellular', label: 'Cellular Scan', icon: '🔬', risk: 'Low', probability: 21, date: 'Feb 15, 2026', time: '3:45 PM', status: 'Reviewed', colors: COLORS.gradCellular },
-    { id: '4', scanType: 'brain', label: 'Brain Scan', icon: '🧠', risk: 'Moderate', probability: 58, date: 'Feb 10, 2026', time: '9:00 AM', status: 'Reviewed', colors: COLORS.gradBrain },
-    { id: '5', scanType: 'bone', label: 'Bone Scan', icon: '🦴', risk: 'Low', probability: 18, date: 'Jan 30, 2026', time: '2:00 PM', status: 'Reviewed', colors: COLORS.gradBone },
+const getHistoryData = (s) => [
+    { id: '1', scanType: 'brain', label: s.brainScan, icon: '🧠', risk: 'High', probability: 82, date: 'Feb 24, 2026', time: '6:30 PM', status: s.reviewed, colors: COLORS.gradBrain },
+    { id: '2', scanType: 'bone', label: s.boneScan, icon: '🦴', risk: 'Moderate', probability: 45, date: 'Feb 20, 2026', time: '11:00 AM', status: s.pending, colors: COLORS.gradBone },
+    { id: '3', scanType: 'cellular', label: s.cellularScan, icon: '🔬', risk: 'Low', probability: 21, date: 'Feb 15, 2026', time: '3:45 PM', status: s.reviewed, colors: COLORS.gradCellular },
+    { id: '4', scanType: 'brain', label: s.brainScan, icon: '🧠', risk: 'Moderate', probability: 58, date: 'Feb 10, 2026', time: '9:00 AM', status: s.reviewed, colors: COLORS.gradBrain },
+    { id: '5', scanType: 'bone', label: s.boneScan, icon: '🦴', risk: 'Low', probability: 18, date: 'Jan 30, 2026', time: '2:00 PM', status: s.reviewed, colors: COLORS.gradBone },
 ];
 
 const DUMMY_RESULT = {
@@ -24,15 +25,19 @@ const RISK_COLORS = { High: COLORS.danger, Moderate: COLORS.warning, Low: COLORS
 const RISK_BG = { High: COLORS.dangerLight, Moderate: COLORS.warningLight, Low: COLORS.successLight };
 const RISK_TEXT = { High: '#7F1D1D', Moderate: '#78350F', Low: '#14532D' };
 
-const STATS = [
-    { label: 'Total Scans', value: HISTORY_DATA.length.toString(), icon: '📊', color: COLORS.primary },
-    { label: 'High Risk', value: HISTORY_DATA.filter(h => h.risk === 'High').length.toString(), icon: '⚠️', color: COLORS.danger },
-    { label: 'Reviewed', value: HISTORY_DATA.filter(h => h.status === 'Reviewed').length.toString(), icon: '✅', color: COLORS.success },
+const getStats = (s, data) => [
+    { label: s.totalScans, value: data.length.toString(), icon: '📊', color: COLORS.primary },
+    { label: s.highRisk, value: data.filter(h => h.risk === 'High').length.toString(), icon: '⚠️', color: COLORS.danger },
+    { label: s.reviewed, value: data.filter(h => h.status === s.reviewed).length.toString(), icon: '✅', color: COLORS.success },
 ];
 
 export default function HistoryScreen({ navigation }) {
+    const { strings } = useAppTheme();
     const [filter, setFilter] = useState('All');
-    const filters = ['All', 'High', 'Moderate', 'Low'];
+
+    const HISTORY_DATA = getHistoryData(strings);
+    const STATS = getStats(strings, HISTORY_DATA);
+    const filters = [{ key: 'All', label: strings.all }, { key: 'High', label: strings.high }, { key: 'Moderate', label: strings.moderate }, { key: 'Low', label: strings.low }];
 
     const filtered = filter === 'All' ? HISTORY_DATA : HISTORY_DATA.filter(h => h.risk === filter);
 
@@ -58,8 +63,8 @@ export default function HistoryScreen({ navigation }) {
                         <Text style={styles.histLabel}>{item.label}</Text>
                         <Text style={styles.histDate}>📅 {item.date}  ·  {item.time}</Text>
                     </View>
-                    <View style={[styles.statusPill, { backgroundColor: item.status === 'Reviewed' ? COLORS.successLight : COLORS.warningLight }]}>
-                        <Text style={[styles.statusTxt, { color: item.status === 'Reviewed' ? '#065F46' : '#78350F' }]}>
+                    <View style={[styles.statusPill, { backgroundColor: item.status === strings.reviewed ? COLORS.successLight : COLORS.warningLight }]}>
+                        <Text style={[styles.statusTxt, { color: item.status === strings.reviewed ? '#065F46' : '#78350F' }]}>
                             {item.status}
                         </Text>
                     </View>
@@ -67,7 +72,7 @@ export default function HistoryScreen({ navigation }) {
 
                 <View style={styles.histCardBottom}>
                     <View style={[styles.riskPill, { backgroundColor: RISK_BG[item.risk] }]}>
-                        <Text style={[styles.riskTxt, { color: RISK_TEXT[item.risk] }]}>{item.risk} Risk</Text>
+                        <Text style={[styles.riskTxt, { color: RISK_TEXT[item.risk] }]}>{strings[item.risk.toLowerCase()] || item.risk} {strings.riskLabel}</Text>
                     </View>
                     <View style={styles.probRow}>
                         <View style={styles.probBarBg}>
@@ -76,7 +81,7 @@ export default function HistoryScreen({ navigation }) {
                         <Text style={[styles.probPct, { color: RISK_COLORS[item.risk] }]}>{item.probability}%</Text>
                     </View>
                 </View>
-                <Text style={styles.histTapHint}>Tap to view full report →</Text>
+                <Text style={styles.histTapHint}>{strings.tapToView}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -94,8 +99,8 @@ export default function HistoryScreen({ navigation }) {
                     <View style={styles.headerIconWrap}>
                         <Text style={styles.headerMainIcon}>📋</Text>
                     </View>
-                    <Text style={styles.headerTitle}>Scan History</Text>
-                    <Text style={styles.headerSub}>Your complete medical scan timeline</Text>
+                    <Text style={styles.headerTitle}>{strings.scanHistory}</Text>
+                    <Text style={styles.headerSub}>{strings.scanHistorySub}</Text>
                 </LinearGradient>
 
                 {/* Stats row */}
@@ -113,11 +118,11 @@ export default function HistoryScreen({ navigation }) {
                 <View style={styles.filterRow}>
                     {filters.map(f => (
                         <TouchableOpacity
-                            key={f}
-                            style={[styles.filterChip, filter === f && styles.filterChipActive]}
-                            onPress={() => setFilter(f)}
+                            key={f.key}
+                            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+                            onPress={() => setFilter(f.key)}
                         >
-                            <Text style={[styles.filterTxt, filter === f && styles.filterTxtActive]}>{f}</Text>
+                            <Text style={[styles.filterTxt, filter === f.key && styles.filterTxtActive]}>{f.label}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
