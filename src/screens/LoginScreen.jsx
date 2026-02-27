@@ -42,7 +42,7 @@ export default function LoginScreen({ navigation }) {
       return false;
     }
     if (password.length < 6) {
-      
+
       Toast.show({
         type: 'error',
         text1: 'Invalid Email',
@@ -65,37 +65,29 @@ export default function LoginScreen({ navigation }) {
     if (!validate()) return;
 
     try {
-      
+
       setLoading(true);
 
       const host = 'http://192.168.68.157:8000';
-
       const res = await fetch(`${host}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.detail || 'Login failed');
-        
       } else {
-        
-      // await AsyncStorage.setItem('userName', data.name);
-      console.log('Login successful, token stored');  
-      
-      Toast.show({
-        type: 'success',
-        text1: 'Login Successful',
-        text2: `Welcome ${data.name}`,
-      });
-      await AsyncStorage.setItem('jwtToken', data.access_token);
-            navigation.replace('MainTabs');
-    }
-      
-
+        await AsyncStorage.setItem('jwtToken', data.access_token);
+        Toast.show({
+          type: 'success',
+          text1: 'Login Successful',
+          text2: `Welcome back!`,
+        });
+        setTimeout(() => {
+          navigation.replace('MainTabs');
+        }, 500);
+      }
     } catch (err) {
       Toast.show({
         type: 'error',
@@ -103,6 +95,7 @@ export default function LoginScreen({ navigation }) {
         text2: err.message || 'Unable to login',
       });
     } finally {
+      
       setLoading(false);
     }
   };
@@ -113,24 +106,20 @@ export default function LoginScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const { user, idToken } = userInfo;
-      const res = await fetch('YOUR_BACKEND_URL/auth/google', {
+      const res = await fetch('http://192.168.68.157:8000/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, email: user.email }),
       });
       if (res.ok) {
-        Alert.alert('Success', `Logged in as ${user.email}`);
-        navigation?.navigate('MainTabs');
-      } else Alert.alert('Error', 'Backend authentication failed');
-      // const res = await fetch('YOUR_BACKEND_URL/auth/google', {
-      //   method: 'POST', headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ idToken, email: user.email }),
-      // });
-      // if (res.ok) { Alert.alert('Success', `Logged in as ${user.email}`); navigation?.navigate('MainTabs'); }
-      // else Alert.alert('Error', 'Backend authentication failed');
-
-      // Directly navigate to allow access
-      navigation?.navigate('HomeScreen');
+        Toast.show({
+          type: 'success',
+          text1: 'Google Login Successful',
+        });
+        navigation?.replace('MainTabs');
+      } else {
+        throw new Error('Backend authentication failed');
+      }
     } catch (err) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
       Alert.alert('Error', err.message || 'Google sign-in failed');

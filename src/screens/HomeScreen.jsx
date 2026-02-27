@@ -153,7 +153,7 @@ export default function HomeScreen({ navigation }) {
             keyExtractor={i => i.label} numColumns={3}
             columnWrapperStyle={styles.metricRow} scrollEnabled={false}
           />
-        </View>
+        </View> 
 
         {/* ── Upcoming appointments ── */}
         <View style={styles.section}>
