@@ -142,11 +142,6 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.bellIcon}>🔔</Text>
               <View style={styles.bellBadge}><Text style={styles.bellBadgeTxt}>2</Text></View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
-              <LinearGradient colors={COLORS.gradPrimary} style={styles.avatarGrad}>
-                <Text style={styles.avatarText}>{userName && userName.length ? userName[0] : 'U'}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
         </View>
 
