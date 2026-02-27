@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
+import { useAppTheme } from '../context/AppContext';
 
 const INITIAL_DATA = {
     firstName: '',
@@ -22,6 +23,7 @@ const INITIAL_DATA = {
 };
 
 export default function ProfileScreen({ navigation }) {
+    const { strings, language } = useAppTheme();
     const [profileData, setProfileData] = useState(INITIAL_DATA);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -35,7 +37,7 @@ export default function ProfileScreen({ navigation }) {
         try {
             setLoading(true);
             setError(null);
-            
+
             const token = await AsyncStorage.getItem('jwtToken');
             if (!token) {
                 setError('No authentication token found');
@@ -53,10 +55,10 @@ export default function ProfileScreen({ navigation }) {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    setError('Session expired. Please login again');
+                    setError(strings.sessionExpired || 'Session expired. Please login again');
                     await AsyncStorage.removeItem('jwtToken');
                 } else {
-                    setError('Failed to fetch profile data');
+                    setError(strings.fetchError || 'Failed to fetch profile data');
                 }
                 setLoading(false);
                 return;
@@ -64,7 +66,7 @@ export default function ProfileScreen({ navigation }) {
 
             const data = await response.json();
             setProfileData(data);
-         AsyncStorage.setItem('userName', data.firstName);
+            AsyncStorage.setItem('userName', data.firstName);
         } catch (err) {
             console.error('Profile fetch error:', err);
             setError(err.message || 'Network error');
@@ -84,16 +86,16 @@ export default function ProfileScreen({ navigation }) {
     };
 
     const HEALTH_BADGES = [
-        { label: 'Blood Group', value: profileData.bloodGroup, icon: '🩸', colors: COLORS.gradPink },
-        { label: 'Gender', value: profileData.gender, icon: '👤', colors: COLORS.gradPrimary },
-        { label: 'Age', value: profileData.age ? `${profileData.age} yrs` : 'N/A', icon: '🎂', colors: COLORS.gradAccent },
+        { label: strings.bloodGroupLabel, value: profileData.bloodGroup, icon: '🩸', colors: COLORS.gradPink },
+        { label: strings.genderLabel, value: profileData.gender, icon: '👤', colors: COLORS.gradPrimary },
+        { label: strings.ageLabel, value: profileData.age ? `${profileData.age} ${strings.yrs}` : strings.na, icon: '🎂', colors: COLORS.gradAccent },
     ];
 
     const INFO_ITEMS = [
-        { icon: '📞', label: 'Phone', value: profileData.phone },
-        { icon: '📍', label: 'Location', value: `${profileData.city}` },
-        { icon: '🏠', label: 'Address', value: profileData.address },
-        { icon: '🚨', label: 'Emergency Contact', value: `${profileData.emergencyContactName} · ${profileData.emergencyContactPhone}` },
+        { icon: '📞', label: strings.phoneLabel, value: profileData.phone },
+        { icon: '📍', label: strings.locationLabel, value: `${profileData.city}` },
+        { icon: '🏠', label: strings.addressLabel, value: profileData.address },
+        { icon: '🚨', label: strings.emergencyContact, value: `${profileData.emergencyContactName} · ${profileData.emergencyContactPhone}` },
     ];
 
     if (loading) {
@@ -102,7 +104,7 @@ export default function ProfileScreen({ navigation }) {
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>Loading profile...</Text>
+                    <Text style={styles.loadingText}>{strings.loadingProfile}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -114,10 +116,10 @@ export default function ProfileScreen({ navigation }) {
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorIcon}>⚠️</Text>
-                    <Text style={styles.errorTitle}>Error</Text>
+                    <Text style={styles.errorTitle}>{strings.errorTitle}</Text>
                     <Text style={styles.errorMessage}>{error}</Text>
                     <TouchableOpacity style={styles.retryBtn} onPress={fetchProfileData}>
-                        <Text style={styles.retryBtnText}>Retry</Text>
+                        <Text style={styles.retryBtnText}>{strings.retry}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -149,7 +151,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* ── Health Badges ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Health Summary</Text>
+                    <Text style={styles.sectionTitle}>{strings.healthSummary}</Text>
                     <View style={styles.badgeRow}>
                         {HEALTH_BADGES.map(b => (
                             <LinearGradient key={b.label} colors={b.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.badge}>
@@ -163,7 +165,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* ── Personal Info ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Personal Information</Text>
+                    <Text style={styles.sectionTitle}>{strings.personalInfo}</Text>
                     <View style={styles.card}>
                         {INFO_ITEMS.map((item, i) => (
                             <View key={item.label} style={[styles.row, i < INFO_ITEMS.length - 1 && styles.rowBorder]}>
@@ -181,31 +183,31 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* ── Account ── */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account</Text>
+                    <Text style={styles.sectionTitle}>{strings.accountTitle}</Text>
                     <View style={styles.card}>
                         <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => navigation.navigate('Settings')}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>⚙️</Text></View>
-                            <Text style={[styles.rowValue, { flex: 1 }]}>Settings</Text>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>{strings.settings}</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🔒</Text></View>
-                            <Text style={[styles.rowValue, { flex: 1 }]}>Privacy Policy</Text>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>{strings.privacyPolicy}</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>💬</Text></View>
-                            <Text style={[styles.rowValue, { flex: 1 }]}>Help & Support</Text>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>{strings.helpSupport}</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.row, styles.rowBorder]} onPress={() => { }}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>ℹ️</Text></View>
-                            <Text style={[styles.rowValue, { flex: 1 }]}>About App</Text>
+                            <Text style={[styles.rowValue, { flex: 1 }]}>{strings.aboutApp}</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.row} onPress={() => setShowLogoutModal(true)}>
                             <View style={styles.rowIconWrap}><Text style={styles.rowIcon}>🚪</Text></View>
-                            <Text style={[styles.rowValue, { flex: 1, color: COLORS.danger }]}>Log Out</Text>
+                            <Text style={[styles.rowValue, { flex: 1, color: COLORS.danger }]}>{strings.logout}</Text>
                             <Text style={[styles.chevron, { color: COLORS.danger }]}>›</Text>
                         </TouchableOpacity>
                     </View>
@@ -222,20 +224,20 @@ export default function ProfileScreen({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Log Out</Text>
-                        <Text style={styles.modalMessage}>Are you sure you want to log out?</Text>
+                        <Text style={styles.modalTitle}>{strings.logout}</Text>
+                        <Text style={styles.modalMessage}>{strings.logoutConfirm}</Text>
                         <View style={styles.modalButtons}>
                             <TouchableOpacity
                                 style={[styles.modalBtn, styles.cancelBtn]}
                                 onPress={() => setShowLogoutModal(false)}
                             >
-                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                                <Text style={styles.cancelBtnText}>{strings.cancel}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalBtn, styles.logoutBtn]}
                                 onPress={handleLogout}
                             >
-                                <Text style={styles.logoutBtnText}>Log Out</Text>
+                                <Text style={styles.logoutBtnText}>{strings.yesLogout}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -40,7 +40,13 @@ function TabIcon({ emoji, label, focused }: TabIconProps) {
       <View style={[styles.tabIconWrap, focused && { backgroundColor: colors.primaryLight }]}>
         <Text style={styles.tabEmoji}>{emoji}</Text>
       </View>
-      <Text style={[styles.tabLabel, focused && { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
+      <Text
+        style={[styles.tabLabel, focused && { color: colors.primary, fontWeight: '700' }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -98,7 +104,7 @@ function InnerApp() {
 
         {/* Main app with bottom tabs */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
-       {/* Home Screen */}
+        {/* Home Screen */}
         <Stack.Screen name="HomeScreen" component={HomeScreen} />
         {/* Full-screen stack */}
         <Stack.Screen name="Upload" component={UploadScreen} />
@@ -130,20 +136,20 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    height: 80,
+    height: 90, // increased height to accommodate labels
     borderTopWidth: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     ...SHADOW.lg,
-    paddingBottom: 8,
-    paddingTop: 0,
+    paddingBottom: 20, // increased bottom padding
+    paddingTop: 8, // added top padding
     elevation: 10,
   },
   tabItem: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     flex: 1,
-    paddingTop: 10,
+    height: '100%',
   },
   tabIconWrap: {
     width: 44, height: 30,
