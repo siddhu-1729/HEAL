@@ -10,54 +10,31 @@ import {
   ScrollView,
   Alert,
   Image,
+  AsyncStorage,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import scheduleDailyNotification from '../services/notification';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
-import Toast from 'react-native-toast-message';
-import { useAppTheme } from '../context/AppContext';
 
 GoogleSignin.configure({
-  webClientId:
-    '625745236599-14072n5l907r2i4u1obl5c3edhctlof9.apps.googleusercontent.com',
+  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
   offlineAccess: true,
 });
 
 export default function LoginScreen({ navigation }) {
-  const { setCurrentUserId } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [loginError, setLoginError] = useState('');
 
   const validate = () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address',
-      });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
       return false;
     }
     if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address',
-      });
-      return false;
-    }
-    if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: 'Weak Password',
-        text2: 'Password must be at least 6 characters long',
-      });
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return false;
     }
     return true;
@@ -65,43 +42,58 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!validate()) return;
+    
+    setLoading(true);
+    setTimeout(() => setLoading(false), 900);
+    navigation.navigate('MainTabs');
+    scheduleDailyNotification();
+    setLoginError('');
 
     try {
-      setLoading(true);
-
-      const host = 'http://192.168.68.157:8000';
-      const res = await fetch(`${host}/login`, {
+      // Send login request to FastAPI backend
+      const response = await fetch('http://192.168.1.13:8000/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `username=${encodeURIComponent(
-          email,
-        )}&password=${encodeURIComponent(password)}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: email,
+          password: password,
+        }).toString(),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Login failed');
-      } else {
-        await AsyncStorage.setItem('jwtToken', data.access_token);
-        const normalizedUserId = email.trim().toLowerCase();
-        await AsyncStorage.setItem('activeUserId', normalizedUserId);
-        setCurrentUserId(normalizedUserId);
-        Toast.show({
-          type: 'success',
-          text1: 'Login Successful',
-          text2: `Welcome back!`,
-        });
-        setTimeout(() => {
-          navigation.replace('MainTabs');
-        }, 500);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoading(false);
+        const errorMessage = data.detail || 'Invalid email or password';
+        setLoginError(errorMessage);
+        Alert.alert('Login Failed', errorMessage);
+        return;
       }
-    } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Login Error',
-        text2: err.message || 'Unable to login',
-      });
-    } finally {
+
+      // Extract JWT token from response
+      const token = data.access_token;
+      
+      // Store token in AsyncStorage for subsequent API calls
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userEmail', email);
+
       setLoading(false);
+      
+      // Clear form
+      setEmail('');
+      setPassword('');
+      
+      // Navigate to Home
+      navigation.navigate('Home');
+      scheduleDailyNotification();
+    } catch (error) {
+      setLoading(false);
+      const errorMessage = error.message || 'An error occurred during login. Please try again.';
+      setLoginError(errorMessage);
+      Alert.alert('Error', errorMessage);
+      console.error('Login error:', error);
     }
   };
 
@@ -111,35 +103,21 @@ export default function LoginScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const { user, idToken } = userInfo;
-      const res = await fetch('http://192.168.68.157:8000/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch('YOUR_BACKEND_URL/auth/google', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, email: user.email }),
       });
-      if (res.ok) {
-        const normalizedUserId =
-          (user?.email || '').trim().toLowerCase() || 'google-user';
-        await AsyncStorage.setItem('activeUserId', normalizedUserId);
-        setCurrentUserId(normalizedUserId);
-        Toast.show({
-          type: 'success',
-          text1: 'Google Login Successful',
-        });
-        navigation?.replace('MainTabs');
-      } else {
-        throw new Error('Backend authentication failed');
-      }
+      if (res.ok) { Alert.alert('Success', `Logged in as ${user.email}`); navigation?.navigate('MainTabs'); }
+      else Alert.alert('Error', 'Backend authentication failed');
     } catch (err) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
       Alert.alert('Error', err.message || 'Google sign-in failed');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -149,100 +127,105 @@ export default function LoginScreen({ navigation }) {
       >
         {/* Brand */}
         <View style={styles.brand}>
+          <Image
+            // source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to continue to Heal</Text>
           <View style={styles.logoBox}>
-            <Image
-              source={require('../../heal_verse_logo.jpeg')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <Text style={styles.logoTxt}>H+</Text>
           </View>
           <Text style={styles.appName}>HealVerse</Text>
           <Text style={styles.tagline}>AI-Powered Health Intelligence</Text>
         </View>
 
-        {/* Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Welcome Back</Text>
-          <Text style={styles.cardSub}>Sign in to continue</Text>
+        <View style={styles.form}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Welcome Back</Text>
+            <Text style={styles.cardSub}>Sign in to continue</Text>
 
-          {/* Email */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrap}>
-            <Text style={styles.inputPrefix}>✉️</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={COLORS.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
+            {loginError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{loginError}</Text>
+              </View>
+            )}
 
-          {/* Password */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrap}>
-            <Text style={styles.inputPrefix}>🔒</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor={COLORS.textMuted}
-              secureTextEntry={secure}
-              value={password}
-              onChangeText={setPassword}
-            />
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputPrefix}>✉️</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputPrefix}>🔒</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry={secure}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setSecure((s) => !s)}
+                style={styles.showBtn}
+                accessibilityLabel="Toggle password visibility"
+              >
+                <Text style={styles.showTxt}>{secure ? 'Show' : 'Hide'}</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
-              onPress={() => setSecure(s => !s)}
-              style={styles.showBtn}
+              style={styles.forgotRow}
+              onPress={() => Alert.alert('Reset', 'Password reset coming soon!')}
             >
-              <Text style={styles.showTxt}>{secure ? 'Show' : 'Hide'}</Text>
+              <Text style={styles.forgotTxt}>Forgot password?</Text>
             </TouchableOpacity>
-          </View>
 
-          <TouchableOpacity
-            style={styles.forgotRow}
-            onPress={() => Alert.alert('Reset', 'Password reset coming soon!')}
-          >
-            <Text style={styles.forgotTxt}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          {/* Sign In */}
-          <TouchableOpacity
-            style={[styles.primaryBtn, loading && styles.btnLoading]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryBtnTxt}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerTxt}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google */}
-          <TouchableOpacity
-            style={styles.socialBtn}
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.googleIcon}>G</Text>
-            <Text style={styles.socialBtnTxt}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {/* Sign Up link */}
-          <View style={styles.signupRow}>
-            <Text style={styles.signupTxt}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => navigation.push('SignupScreen')}>
-              <Text style={styles.signupLink}> Create account</Text>
+            <TouchableOpacity
+              style={[styles.primaryBtn, loading && styles.btnLoading]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryBtnTxt}>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Text>
             </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerTxt}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.socialBtnTxt}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            <View style={styles.signupRow}>
+              <Text style={styles.signupTxt}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => navigation.push('SignupScreen')}>
+                <Text style={styles.signupLink}> Create account</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -251,58 +234,29 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg, paddingBottom: SPACING.xxxl },
+
   brand: { alignItems: 'center', marginBottom: SPACING.xxl },
   logoBox: {
     width: 72,
     height: 72,
     borderRadius: 20,
-    overflow: 'hidden',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
     ...SHADOW.lg,
   },
-  logoImage: { width: '100%', height: '100%' },
   logoTxt: { fontSize: FONT.xxl, fontWeight: '800', color: COLORS.textInverse },
-  appName: {
-    fontSize: FONT.h1,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
+  appName: { fontSize: FONT.h1, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
   tagline: { fontSize: FONT.sm, color: COLORS.textSecondary },
 
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xxl,
-    ...SHADOW.md,
-  },
-  cardTitle: {
-    fontSize: FONT.xl,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontSize: FONT.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xxl,
-  },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.xxl, ...SHADOW.md },
+  cardTitle: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 4 },
+  cardSub: { fontSize: FONT.sm, color: COLORS.textSecondary, marginBottom: SPACING.xxl },
 
-  label: {
-    fontSize: FONT.sm,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
+  label: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.textSecondary, marginBottom: SPACING.sm },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -314,12 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
   },
   inputPrefix: { fontSize: 16, marginRight: SPACING.sm },
-  input: {
-    flex: 1,
-    paddingVertical: SPACING.md,
-    fontSize: FONT.base,
-    color: COLORS.textPrimary,
-  },
+  input: { flex: 1, paddingVertical: SPACING.md, fontSize: FONT.base, color: COLORS.textPrimary },
   showBtn: { paddingLeft: SPACING.sm },
   showTxt: { color: COLORS.primary, fontWeight: '600', fontSize: FONT.sm },
 
@@ -334,23 +283,11 @@ const styles = StyleSheet.create({
     ...SHADOW.md,
   },
   btnLoading: { opacity: 0.75 },
-  primaryBtnTxt: {
-    color: COLORS.textInverse,
-    fontWeight: '700',
-    fontSize: FONT.md,
-  },
+  primaryBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.md },
 
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.xl,
-  },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: SPACING.xl },
   dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  dividerTxt: {
-    marginHorizontal: SPACING.md,
-    fontSize: FONT.sm,
-    color: COLORS.textMuted,
-  },
+  dividerTxt: { marginHorizontal: SPACING.md, fontSize: FONT.sm, color: COLORS.textMuted },
 
   socialBtn: {
     flexDirection: 'row',
@@ -363,23 +300,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     ...SHADOW.sm,
   },
-  googleIcon: {
-    fontSize: FONT.lg,
-    fontWeight: '800',
-    color: '#EA4335',
-    marginRight: SPACING.sm,
-  },
-  socialBtnTxt: {
-    fontSize: FONT.base,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
+  googleIcon: { fontSize: FONT.lg, fontWeight: '800', color: '#EA4335', marginRight: SPACING.sm },
+  socialBtnTxt: { fontSize: FONT.base, fontWeight: '600', color: COLORS.textPrimary },
 
-  signupRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: SPACING.xl,
-  },
+  signupRow: { flexDirection: 'row', justifyContent: 'center', marginTop: SPACING.xl },
   signupTxt: { color: COLORS.textSecondary, fontSize: FONT.sm },
   signupLink: { color: COLORS.primary, fontWeight: '700', fontSize: FONT.sm },
+
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '500',
+  },
 });

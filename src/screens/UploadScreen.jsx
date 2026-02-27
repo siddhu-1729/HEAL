@@ -60,6 +60,7 @@ export default function UploadScreen({ navigation }) {
         launchCamera(
             { mediaType: 'photo', quality: 0.8 },
             (response) => {
+                setShowFileOptions(true);
                 handleImageResponse(response);
             }
         );
@@ -103,28 +104,31 @@ export default function UploadScreen({ navigation }) {
                 type: fileAsset.type || 'image/jpeg',
                 name: fileAsset.fileName || 'scan.jpg',
             });
+            formData.append('scan_type', selected);
 
-            const response = await fetch('http://192.168.1.8:8000/upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-                body: formData,
-            });
+            let resultData = null;
+            // const response = await fetch('http://192.168.1.8:8000/upload', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'multipart/form-data',
+            //     },
+            //     body: formData,
+            // });
 
-            const data = await response.json();
+            // const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.detail || data.error || strings.uploadError);
-            }
+            // if (!response.ok) {
+            //     throw new Error(data.detail || data.error || strings.uploadError);
+            // }
 
-            console.log('Upload successful:', data);
-            showToast(strings.scanUploaded, 'success');
+            // console.log('Upload successful:', data);
+            // showToast(strings.scanUploaded, 'success');
+            // resultData = data?.result ?? null;
 
             // Navigate to Result screen with real or dummy data depending on response structure
             navigation.navigate('Result', {
                 scanType: selected,
-                result: data.result || DUMMY_RESULTS[selected]
+                result: resultData || DUMMY_RESULTS[selected]
             });
 
         } catch (error) {
@@ -190,7 +194,7 @@ export default function UploadScreen({ navigation }) {
                     <TouchableOpacity style={[styles.uploadBox, filePicked && styles.uploadBoxDone]} onPress={pickFile} activeOpacity={0.8}>
                         <Text style={styles.uploadIcon}>{filePicked ? '✅' : '📂'}</Text>
                         <Text style={styles.uploadTitle}>{filePicked ? (fileName ?? strings.fileSelected) : strings.tapToUpload}</Text>
-                        <Text style={styles.uploadSub}>{filePicked ? strings.readyForAnalysis : strings.supportsFiles}</Text>
+                        <Text style={styles.uploadSub}>{filePicked ? strings.readyForAnalysis : 'Supports JPG · PNG only'}</Text>
                     </TouchableOpacity>
                 </View>
 

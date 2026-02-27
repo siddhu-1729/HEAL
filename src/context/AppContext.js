@@ -2,9 +2,9 @@
 // AppContext — global dark mode + language state
 // ─────────────────────────────────────────────────────────────────
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../theme/theme';
 import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Dark color overrides
 export const DARK_COLORS = {
@@ -254,6 +254,9 @@ const DEFAULT_CTX = {
     getUserActivityPayload: () => ({ userId: 'guest', activities: [] }),
     sendUserActivityToEndpoint: async () => ({ ok: false, status: 0, data: null }),
     sendFitnessAnalyze: async () => ({ ok: false, status: 0, data: null }),
+    syncResult: null,
+    setSyncResult: () => { },
+    sendFitnessData: async () => ({}),
 };
 
 const FITNESS_ANALYZE_ENDPOINT = 'http://192.168.68.157:8000/fitness/analyze';
@@ -269,6 +272,7 @@ export function AppProvider({ children }) {
     const [activeSessionIndex, setActiveSessionIndex] = useState(null);
     const [currentUserId, setCurrentUserId] = useState('guest');
     const [userActivityStore, setUserActivityStore] = useState({});
+    const [syncResult, setSyncResult] = useState(null);
 
     const colors = isDark ? DARK_COLORS : COLORS;
     const strings = STRINGS[language] ?? STRINGS.en;
@@ -391,6 +395,32 @@ export function AppProvider({ children }) {
         sendFitnessAnalyze(currentUserId).catch(() => { });
     }, [currentUserId, sendFitnessAnalyze, userActivityStore]);
 
+    const sendFitnessData = async (payload) => {
+        try {
+            const token = await AsyncStorage.getItem('jwtToken');
+
+            const response = await fetch(FITNESS_ANALYZE_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                console.warn('Fitness Data Sync Failed:', response.status);
+                throw new Error('Sync failed');
+            } else {
+                console.log('Fitness data bulk synced securely.');
+                return response.json().catch(() => ({}));
+            }
+        } catch (error) {
+            console.error('Error sending fitness data to backend:', error);
+            throw error;
+        }
+    };
+
     // Global Timer Effect
     useEffect(() => {
         const interval = setInterval(() => {
@@ -406,7 +436,8 @@ export function AppProvider({ children }) {
                         if (!w.done) {
                             recordUserActivity(w.name, w.threshold);
                             shouldAdvance = true;
-                            return { ...w, elapsed: w.elapsed, isActive: false, done: true };
+                            const finishedWorkout = { ...w, elapsed: w.elapsed, isActive: false, done: true };
+                            return finishedWorkout;
                         }
                     }
 
@@ -440,7 +471,8 @@ export function AppProvider({ children }) {
             workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex,
             currentUserId, setCurrentUserId,
             userActivityStore, recordUserActivity, getUserActivityPayload, sendUserActivityToEndpoint,
-            sendFitnessAnalyze
+            sendFitnessData, syncResult, setSyncResult
+            ,sendFitnessAnalyze
         }}>
             {children}
         </AppContext.Provider>

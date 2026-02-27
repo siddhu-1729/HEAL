@@ -108,7 +108,7 @@ export default function ScriptAnalyzerScreen({ navigation }) {
                         type: 'photo',
                         uri: asset.uri,
                     };
-                    setFiles([...files, newFile]);
+                    setFiles((prev) => [...prev, newFile]);
                     showToast('Photo added successfully!', 'success');
                 }
             }
@@ -133,7 +133,7 @@ export default function ScriptAnalyzerScreen({ navigation }) {
                         type: 'gallery',
                         uri: asset.uri,
                     }));
-                    setFiles([...files, ...newFiles]);
+                    setFiles((prev) => [...prev, ...newFiles]);
                     showToast(`${newFiles.length} image(s) added successfully!`, 'success');
                 }
             }
@@ -247,7 +247,7 @@ export default function ScriptAnalyzerScreen({ navigation }) {
                                 {files.length > 0 ? `${files.length} file(s) selected` : 'Tap to upload prescription'}
                             </Text>
                             <Text style={styles.uploadSub}>
-                                {files.length > 0 ? 'Ready for analysis' : 'Supports JPG · PNG · PDF'}
+                                {files.length > 0 ? 'Ready for analysis' : 'Supports JPG · PNG only'}
                             </Text>
                         </TouchableOpacity>
 

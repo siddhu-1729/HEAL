@@ -28,7 +28,7 @@ const UPCOMING_APPOINTMENTS = [
 ];
 
 export default function HomeScreen({ navigation }) {
-  const { strings } = useAppTheme();
+  const { strings, syncResult } = useAppTheme();
   const QUICK_ACTIONS = getQuickActions(strings);
   const HEALTH_METRICS = getHealthMetrics(strings);
   const [userName, setUserName] = useState('User');
@@ -124,10 +124,10 @@ export default function HomeScreen({ navigation }) {
           <LinearGradient colors={COLORS.gradPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.statusBanner}>
             <View style={styles.statusLeft}>
               <Text style={styles.statusLabel}>{strings.healthStatus}</Text>
-              <Text style={styles.statusValue}>{strings.statusExcellent}</Text>
-              <Text style={styles.statusSub}>{strings.statusNormal}</Text>
+              <Text style={styles.statusValue}>{syncResult?.fitness_level ? syncResult?.fitness_level.charAt(0).toUpperCase() + syncResult?.fitness_level.slice(1) : strings.statusExcellent}</Text>
+              <Text style={styles.statusSub}>{syncResult?.fitness_score ? `Latest Score: ${Math.round(syncResult?.fitness_score)}` : strings.statusNormal}</Text>
             </View>
-            <TouchableOpacity style={styles.statusBtn}>
+            <TouchableOpacity style={styles.statusBtn} onPress={() => navigation.navigate('fitness')}>
               <Text style={styles.statusBtnText}>{strings.viewBtn}</Text>
             </TouchableOpacity>
           </LinearGradient>
