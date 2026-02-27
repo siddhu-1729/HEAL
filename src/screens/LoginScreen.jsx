@@ -19,13 +19,16 @@ import {
 import scheduleDailyNotification from '../services/notification';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import Toast from 'react-native-toast-message';
+import { useAppTheme } from '../context/AppContext';
 
 GoogleSignin.configure({
-  webClientId: '625745236599-14072n5l907r2i4u1obl5c3edhctlof9.apps.googleusercontent.com',
+  webClientId:
+    '625745236599-14072n5l907r2i4u1obl5c3edhctlof9.apps.googleusercontent.com',
   offlineAccess: true,
 });
 
 export default function LoginScreen({ navigation }) {
+  const { setCurrentUserId } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
@@ -42,7 +45,6 @@ export default function LoginScreen({ navigation }) {
       return false;
     }
     if (password.length < 6) {
-
       Toast.show({
         type: 'error',
         text1: 'Invalid Email',
@@ -65,20 +67,24 @@ export default function LoginScreen({ navigation }) {
     if (!validate()) return;
 
     try {
-
       setLoading(true);
 
       const host = 'http://192.168.68.157:8000';
       const res = await fetch(`${host}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+        body: `username=${encodeURIComponent(
+          email,
+        )}&password=${encodeURIComponent(password)}`,
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.detail || 'Login failed');
       } else {
         await AsyncStorage.setItem('jwtToken', data.access_token);
+        const normalizedUserId = email.trim().toLowerCase();
+        await AsyncStorage.setItem('activeUserId', normalizedUserId);
+        setCurrentUserId(normalizedUserId);
         Toast.show({
           type: 'success',
           text1: 'Login Successful',
@@ -95,7 +101,6 @@ export default function LoginScreen({ navigation }) {
         text2: err.message || 'Unable to login',
       });
     } finally {
-      
       setLoading(false);
     }
   };
@@ -112,6 +117,10 @@ export default function LoginScreen({ navigation }) {
         body: JSON.stringify({ idToken, email: user.email }),
       });
       if (res.ok) {
+        const normalizedUserId =
+          (user?.email || '').trim().toLowerCase() || 'google-user';
+        await AsyncStorage.setItem('activeUserId', normalizedUserId);
+        setCurrentUserId(normalizedUserId);
         Toast.show({
           type: 'success',
           text1: 'Google Login Successful',
@@ -374,4 +383,3 @@ const styles = StyleSheet.create({
   signupTxt: { color: COLORS.textSecondary, fontSize: FONT.sm },
   signupLink: { color: COLORS.primary, fontWeight: '700', fontSize: FONT.sm },
 });
-

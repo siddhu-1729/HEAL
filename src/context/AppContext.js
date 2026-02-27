@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────
 // AppContext — global dark mode + language state
 // ─────────────────────────────────────────────────────────────────
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { COLORS } from '../theme/theme';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Dark color overrides
 export const DARK_COLORS = {
@@ -177,7 +178,16 @@ const DEFAULT_CTX = {
     setWorkouts: () => { },
     activeSessionIndex: null,
     setActiveSessionIndex: () => { },
+    currentUserId: 'guest',
+    setCurrentUserId: () => { },
+    userActivityStore: {},
+    recordUserActivity: () => { },
+    getUserActivityPayload: () => ({ userId: 'guest', activities: [] }),
+    sendUserActivityToEndpoint: async () => ({ ok: false, status: 0, data: null }),
+    sendFitnessAnalyze: async () => ({ ok: false, status: 0, data: null }),
 };
+
+const FITNESS_ANALYZE_ENDPOINT = 'http://192.168.68.157:8000/fitness/analyze';
 
 const AppContext = createContext(DEFAULT_CTX);
 
@@ -188,12 +198,129 @@ export function AppProvider({ children }) {
     // Global Fitness State
     const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
     const [activeSessionIndex, setActiveSessionIndex] = useState(null);
+    const [currentUserId, setCurrentUserId] = useState('guest');
+    const [userActivityStore, setUserActivityStore] = useState({});
 
     const colors = isDark ? DARK_COLORS : COLORS;
     const strings = STRINGS[language] ?? STRINGS.en;
 
     const toggleDark = () => setIsDark(d => !d);
     const changeLanguage = (lang) => setLanguage(lang);
+
+    useEffect(() => {
+        const hydrateActivityState = async () => {
+            try {
+                const [savedUserId, savedActivityStore] = await Promise.all([
+                    AsyncStorage.getItem('activeUserId'),
+                    AsyncStorage.getItem('userActivityStore'),
+                ]);
+
+                if (savedUserId?.trim()) {
+                    setCurrentUserId(savedUserId.trim().toLowerCase());
+                }
+
+                if (savedActivityStore) {
+                    const parsed = JSON.parse(savedActivityStore);
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        setUserActivityStore(parsed);
+                    }
+                }
+            } catch (_err) {
+            }
+        };
+
+        hydrateActivityState();
+    }, []);
+
+    useEffect(() => {
+        AsyncStorage.setItem('activeUserId', currentUserId).catch(() => { });
+    }, [currentUserId]);
+
+    useEffect(() => {
+        AsyncStorage.setItem('userActivityStore', JSON.stringify(userActivityStore)).catch(() => { });
+    }, [userActivityStore]);
+
+    const normalizeActivityName = useCallback((name) => (name || 'unknown').toString().trim().toLowerCase(), []);
+
+    const recordUserActivity = useCallback((activityName, minutes, userIdArg) => {
+        const targetUserId = (userIdArg || currentUserId || 'guest').toString().trim().toLowerCase();
+        const normalizedActivity = normalizeActivityName(activityName);
+        const durationMins = Number.isFinite(minutes) ? Math.max(0, Math.floor(minutes)) : 0;
+
+        if (!durationMins) return;
+
+        setUserActivityStore(prev => {
+            const existingUser = prev[targetUserId] || { totalsByActivity: {}, sessions: [] };
+            const nextTotal = (existingUser.totalsByActivity[normalizedActivity] || 0) + durationMins;
+            const nextSession = {
+                activity: normalizedActivity,
+                minutes: durationMins,
+                recordedAt: new Date().toISOString(),
+            };
+
+            return {
+                ...prev,
+                [targetUserId]: {
+                    totalsByActivity: {
+                        ...existingUser.totalsByActivity,
+                        [normalizedActivity]: nextTotal,
+                    },
+                    sessions: [...existingUser.sessions, nextSession],
+                },
+            };
+        });
+    }, [currentUserId, normalizeActivityName]);
+
+    const getUserActivityPayload = useCallback((userIdArg) => {
+        const targetUserId = (userIdArg || currentUserId || 'guest').toString().trim().toLowerCase();
+        const userData = userActivityStore[targetUserId] || { totalsByActivity: {}, sessions: [] };
+
+        return {
+            userId: targetUserId,
+            activities: Object.entries(userData.totalsByActivity).map(([activity, totalMinutes]) => ({
+                activity,
+                totalMinutes,
+            })),
+            sessions: userData.sessions,
+            generatedAt: new Date().toISOString(),
+        };
+    }, [currentUserId, userActivityStore]);
+
+    const sendUserActivityToEndpoint = useCallback(async (endpointUrl, userIdArg) => {
+        const payload = getUserActivityPayload(userIdArg);
+        const response = await fetch(endpointUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (_err) {
+        }
+
+        return {
+            ok: response.ok,
+            status: response.status,
+            data,
+        };
+    }, [getUserActivityPayload]);
+
+    const sendFitnessAnalyze = useCallback(async (userIdArg) => {
+        return sendUserActivityToEndpoint(FITNESS_ANALYZE_ENDPOINT, userIdArg);
+    }, [sendUserActivityToEndpoint]);
+
+    useEffect(() => {
+        const currentUserData = userActivityStore[currentUserId];
+        if (!currentUserData || !Array.isArray(currentUserData.sessions) || currentUserData.sessions.length === 0) {
+            return;
+        }
+
+        sendFitnessAnalyze(currentUserId).catch(() => { });
+    }, [currentUserId, sendFitnessAnalyze, userActivityStore]);
 
     // Global Timer Effect
     useEffect(() => {
@@ -208,6 +335,7 @@ export function AppProvider({ children }) {
                         return { ...w, elapsed: w.elapsed + 1, isActive: true };
                     } else if (isCurrentlyActiveSession && w.elapsed === w.threshold * 60) {
                         if (!w.done) {
+                            recordUserActivity(w.name, w.threshold);
                             shouldAdvance = true;
                             return { ...w, elapsed: w.elapsed, isActive: false, done: true };
                         }
@@ -235,12 +363,15 @@ export function AppProvider({ children }) {
             });
         }, 1000);
         return () => clearInterval(interval);
-    }, [activeSessionIndex]);
+    }, [activeSessionIndex, recordUserActivity]);
 
     return (
         <AppContext.Provider value={{
             isDark, toggleDark, language, changeLanguage, colors, strings,
-            workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex
+            workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex,
+            currentUserId, setCurrentUserId,
+            userActivityStore, recordUserActivity, getUserActivityPayload, sendUserActivityToEndpoint,
+            sendFitnessAnalyze
         }}>
             {children}
         </AppContext.Provider>
