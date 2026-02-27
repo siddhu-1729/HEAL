@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar, FlatList, Alert, Modal, TextInput,
-  Animated, Dimensions, Easing
+  Animated, Dimensions, Easing, UIManager
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Video from 'react-native-video';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import { useAppTheme, useFitness } from '../context/AppContext';
+
+const HAS_RCT_VIDEO = !!UIManager.getViewManagerConfig?.('RCTVideo');
 
 const getDailyStats = (s) => [
   { label: s.steps, value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
@@ -481,6 +483,8 @@ export default function FitnessScreen({ navigation }) {
                     <LinearGradient colors={item.done ? [COLORS.success, COLORS.successLight] : item.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sessionIconBoxModal}>
                       {item.done ? (
                         <Text style={styles.sessionIconModal}>✅</Text>
+                      ) : !HAS_RCT_VIDEO ? (
+                        <Text style={styles.sessionIconModal}>{item.icon || '🏃'}</Text>
                       ) : (
                         <View style={{ width: 132, height: 132, borderRadius: 66, overflow: 'hidden' }}>
                           <Video
