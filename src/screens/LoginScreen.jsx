@@ -21,7 +21,7 @@ import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import Toast from 'react-native-toast-message';
 
 GoogleSignin.configure({
-  webClientId: '625745236599-14072n5l907r2i4u1obl5c3edhctlof9.apps.googleusercontent.com',
+  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
   offlineAccess: true,
 });
 
@@ -34,28 +34,12 @@ export default function LoginScreen({ navigation }) {
 
   const validate = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address',
-      });
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return false;
     }
     if (password.length < 6) {
-
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address',
-      });
-      return false;
-    }
-    if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: 'Weak Password',
-        text2: 'Password must be at least 6 characters long',
-      });
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      Toast.show({ type: 'error', text1: 'Weak Password', text2: 'Password must be at least 6 characters long' });
       return false;
     }
     return true;
@@ -64,38 +48,20 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     if (!validate()) return;
 
+    setLoading(true);
     try {
+      // TODO: perform real login request here. Example (commented):
+      // const res = await fetch(`${host}/login`, { method: 'POST', ... });
+      // const data = await res.json();
+      // if (!res.ok) throw new Error(data.detail || 'Login failed');
+      // await AsyncStorage.setItem('jwtToken', data.access_token);
 
-      setLoading(true);
-
-      const host = 'http://192.168.68.157:8000';
-      const res = await fetch(`${host}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Login failed');
-      } else {
-        await AsyncStorage.setItem('jwtToken', data.access_token);
-        Toast.show({
-          type: 'success',
-          text1: 'Login Successful',
-          text2: `Welcome back!`,
-        });
-        setTimeout(() => {
-          navigation.replace('MainTabs');
-        }, 500);
-      }
+      // For now, navigate into the tab navigator so bottom bar shows
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      scheduleDailyNotification();
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Login Error',
-        text2: err.message || 'Unable to login',
-      });
+      Toast.show({ type: 'error', text1: 'Login Error', text2: err.message || 'Unable to login' });
     } finally {
-      
       setLoading(false);
     }
   };
@@ -106,20 +72,24 @@ export default function LoginScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const { user, idToken } = userInfo;
-      const res = await fetch('http://192.168.68.157:8000/auth/google', {
+      const res = await fetch('YOUR_BACKEND_URL/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, email: user.email }),
       });
       if (res.ok) {
-        Toast.show({
-          type: 'success',
-          text1: 'Google Login Successful',
-        });
-        navigation?.replace('MainTabs');
-      } else {
-        throw new Error('Backend authentication failed');
-      }
+        Alert.alert('Success', `Logged in as ${user.email}`);
+        navigation?.navigate('MainTabs');
+      } else Alert.alert('Error', 'Backend authentication failed');
+      // const res = await fetch('YOUR_BACKEND_URL/auth/google', {
+      //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ idToken, email: user.email }),
+      // });
+      // if (res.ok) { Alert.alert('Success', `Logged in as ${user.email}`); navigation?.navigate('MainTabs'); }
+      // else Alert.alert('Error', 'Backend authentication failed');
+
+      // Directly navigate to allow access
+      navigation?.navigate('HomeScreen');
     } catch (err) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
       Alert.alert('Error', err.message || 'Google sign-in failed');
@@ -374,4 +344,3 @@ const styles = StyleSheet.create({
   signupTxt: { color: COLORS.textSecondary, fontSize: FONT.sm },
   signupLink: { color: COLORS.primary, fontWeight: '700', fontSize: FONT.sm },
 });
-

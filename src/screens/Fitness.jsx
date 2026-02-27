@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar, FlatList, Alert, Modal, TextInput,
-  Animated, Dimensions, Easing
+  Animated, Dimensions, Easing, ActivityIndicator
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Video from 'react-native-video';
@@ -10,8 +10,6 @@ import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import { useAppTheme, useFitness } from '../context/AppContext';
 
 const getDailyStats = (s) => [
-  { label: s.steps, value: '7,240', target: '10,000', icon: '👟', pct: 72, color: COLORS.primary },
-  { label: s.calories, value: '1,840', target: '2,200', icon: '🔥', pct: 84, color: COLORS.danger },
   { label: s.water, value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
   { label: s.sleep, value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
 ];
@@ -54,7 +52,7 @@ const getVideoSource = (item) => {
 
 export default function FitnessScreen({ navigation }) {
   const { strings } = useAppTheme();
-  const { workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex } = useFitness();
+  const { workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex, sendFitnessData, syncResult, setSyncResult } = useFitness();
   const DAILY_STATS = getDailyStats(strings);
   const PRESET_ACTIVITIES = getPresetActivities(strings);
 
@@ -69,6 +67,37 @@ export default function FitnessScreen({ navigation }) {
   const [editingId, setEditingId] = useState(null);
   const [editingThreshold, setEditingThreshold] = useState('');
   const [showThresholdModal, setShowThresholdModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const currentPayload = React.useMemo(() => {
+    let totalDuration = 0;
+    let totalCount = 0;
+    const activities = [];
+
+    workouts.forEach(w => {
+      if (w.elapsed > 0) {
+        totalCount++;
+        totalDuration += w.elapsed;
+        activities.push({
+          name: w.keyName || w.name,
+          elapsedSeconds: w.elapsed,
+          thresholdSeconds: w.threshold * 60,
+          calories: w.calories
+        });
+      }
+    });
+
+    const bmiVal = (weight && height) ? (weight / Math.pow(height / 100, 2)).toFixed(1) : null;
+
+    return {
+      bmi: bmiVal ? parseFloat(bmiVal) : null,
+      age: 25, // TODO: Pull from user profile when implemented
+      sleep_hours: 7.5, // TODO: Pull from user sleep tracker when implemented
+      workout_count: totalCount,
+      workout_duration: totalDuration,
+      activitiesData: activities
+    };
+  }, [workouts, weight, height]);
 
 
   const flatListRef = useRef(null);
@@ -388,6 +417,104 @@ export default function FitnessScreen({ navigation }) {
               </View>
             );
           })}
+        </View>
+
+        {/* Sync Data Area */}
+        <View style={{ paddingHorizontal: SPACING.md, marginTop: SPACING.xl, marginBottom: 120 }}>
+
+          {/* Payload Preview */}
+          <View style={{ backgroundColor: COLORS.surface, padding: SPACING.md, borderRadius: RADIUS.md, marginBottom: SPACING.md, ...SHADOW.sm }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.textMuted, marginBottom: 12 }}>READY TO SYNC DATA</Text>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: COLORS.background, padding: 10, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Activities</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary }}>{currentPayload.workout_count}</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: COLORS.background, padding: 10, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Duration</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary }}>{(currentPayload.workout_duration / 60).toFixed(1)} min</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: COLORS.background, padding: 10, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted }}>BMI</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary }}>{currentPayload.bmi || '--'}</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: COLORS.background, padding: 10, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Sleep (Est)</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary }}>{currentPayload.sleep_hours}h</Text>
+              </View>
+            </View>
+
+            {currentPayload.activitiesData.length > 0 && (
+              <View>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 6 }}>EXERCISES INCLUDED:</Text>
+                {currentPayload.activitiesData.map((act, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight }}>
+                    <Text style={{ fontSize: 13, color: COLORS.textPrimary }}>{act.name}</Text>
+                    <Text style={{ fontSize: 13, color: COLORS.textMuted }}>{Math.floor(act.elapsedSeconds / 60)}m</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Sync Results Card (Shows after successful sync) */}
+          {syncResult && syncResult?.fitness_score !== undefined && (
+            <View style={{ backgroundColor: COLORS.surface, padding: SPACING.md, borderRadius: RADIUS.md, marginTop: SPACING.lg, ...SHADOW.sm, borderWidth: 1, borderColor: COLORS.borderLight }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.primary, marginBottom: 12, textAlign: 'center' }}>🎉 SYNC COMPLETE</Text>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>Fitness Score</Text>
+                  <Text style={{ fontSize: 32, fontWeight: '800', color: COLORS.textPrimary }}>{Math.round(syncResult?.fitness_score || 0)}</Text>
+                </View>
+
+                <View style={{ width: 1, height: 40, backgroundColor: COLORS.borderLight }} />
+
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>Fitness Level</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.secondary, textTransform: 'capitalize' }}>{syncResult?.fitness_level || '--'}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.timerBtn, { backgroundColor: COLORS.primary, width: '100%', borderRadius: RADIUS.md, paddingVertical: SPACING.sm, marginTop: SPACING.md }, isSyncing && { opacity: 0.7 }]}
+            disabled={isSyncing}
+            onPress={async () => {
+              if (currentPayload.workout_count === 0) {
+                Alert.alert("No Data", "Finish some activities before syncing.");
+                return;
+              }
+              setIsSyncing(true);
+              setSyncResult(null); // Clear previous results
+              try {
+                const result = await sendFitnessData(currentPayload);
+                if (result) {
+                  setSyncResult(result);
+                }
+                Alert.alert("Sync Successful", "Your fitness data has been aggregated and sent.");
+
+                // Clear the local activity progress after successful sync
+                setWorkouts(prev => prev.map(w => ({ ...w, elapsed: 0, done: false, isActive: false })));
+
+              } catch (e) {
+                Alert.alert("Sync Failed", "Could not reach the server right now. Try again later.");
+              } finally {
+                setIsSyncing(false);
+              }
+            }}
+          >
+            {isSyncing ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="small" color={COLORS.textInverse} style={{ marginRight: 8 }} />
+                <Text style={{ color: COLORS.textInverse, fontSize: 16, fontWeight: '700' }}>Sending Data...</Text>
+              </View>
+            ) : (
+              <Text style={{ color: COLORS.textInverse, fontSize: 16, fontWeight: '700', textAlign: 'center' }}>Sync Activity Data</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
       </ScrollView>

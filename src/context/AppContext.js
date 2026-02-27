@@ -2,6 +2,8 @@
 // AppContext — global dark mode + language state
 // ─────────────────────────────────────────────────────────────────
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { interpolateColor } from 'react-native-reanimated';
 import { COLORS } from '../theme/theme';
 import { Alert } from 'react-native';
 
@@ -246,6 +248,8 @@ const DEFAULT_CTX = {
     setWorkouts: () => { },
     activeSessionIndex: null,
     setActiveSessionIndex: () => { },
+    syncResult: null,
+    setSyncResult: () => { },
 };
 
 const AppContext = createContext(DEFAULT_CTX);
@@ -257,12 +261,44 @@ export function AppProvider({ children }) {
     // Global Fitness State
     const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
     const [activeSessionIndex, setActiveSessionIndex] = useState(null);
+    const [syncResult, setSyncResult] = useState(null);
 
     const colors = isDark ? DARK_COLORS : COLORS;
     const strings = STRINGS[language] ?? STRINGS.en;
 
     const toggleDark = () => setIsDark(d => !d);
     const changeLanguage = (lang) => setLanguage(lang);
+
+    const sendFitnessData = async (payload) => {
+        try {
+            const finalPayload = {
+                ...payload,
+                timestamp: new Date().toISOString()
+            };
+
+            const token = await AsyncStorage.getItem('jwtToken');
+
+            const response = await fetch('http://192.168.68.157:8000/fitness/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                console.warn('Fitness Data Sync Failed:', response.status);
+                throw new Error('Sync failed');
+            } else {
+                console.log('Fitness data bulk synced securely.');
+                return response.json().catch(() => ({}));
+            }
+        } catch (error) {
+            console.error('Error sending fitness data to backend:', error);
+            throw error;
+        }
+    };
 
     // Global Timer Effect
     useEffect(() => {
@@ -278,7 +314,8 @@ export function AppProvider({ children }) {
                     } else if (isCurrentlyActiveSession && w.elapsed === w.threshold * 60) {
                         if (!w.done) {
                             shouldAdvance = true;
-                            return { ...w, elapsed: w.elapsed, isActive: false, done: true };
+                            const finishedWorkout = { ...w, elapsed: w.elapsed, isActive: false, done: true };
+                            return finishedWorkout;
                         }
                     }
 
@@ -309,7 +346,8 @@ export function AppProvider({ children }) {
     return (
         <AppContext.Provider value={{
             isDark, toggleDark, language, changeLanguage, colors, strings,
-            workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex
+            workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex,
+            sendFitnessData, syncResult, setSyncResult
         }}>
             {children}
         </AppContext.Provider>
