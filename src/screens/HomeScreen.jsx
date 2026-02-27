@@ -144,9 +144,9 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Health Metrics</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('fitness')}>
+            {/* <TouchableOpacity onPress={() => navigation.navigate('fitness')}>
               <Text style={styles.seeAll}>See all →</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <FlatList
             data={HEALTH_METRICS} renderItem={renderMetric}

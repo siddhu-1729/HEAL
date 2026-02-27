@@ -10,8 +10,8 @@ import {
   ScrollView,
   Alert,
   Image,
-  AsyncStorage,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GoogleSignin,
   statusCodes,
@@ -21,7 +21,7 @@ import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import Toast from 'react-native-toast-message';
 
 GoogleSignin.configure({
-  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  webClientId: '625745236599-14072n5l907r2i4u1obl5c3edhctlof9.apps.googleusercontent.com',
   offlineAccess: true,
 });
 
@@ -34,11 +34,15 @@ export default function LoginScreen({ navigation }) {
 
   const validate = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+      });
       return false;
     }
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      
       Toast.show({
         type: 'error',
         text1: 'Invalid Email',
@@ -61,38 +65,37 @@ export default function LoginScreen({ navigation }) {
     if (!validate()) return;
 
     try {
+      
       setLoading(true);
-      setTimeout(() => setLoading(false), 900);
-      navigation.navigate('MainTabs');
-    setLoading(true);
 
-    const host = 'http://192.168.1.8:8000';
+      const host = 'http://192.168.68.157:8000';
 
-    try {
-      // const res = await fetch(`${host}/login`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      //   body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-      // });
+      const res = await fetch(`${host}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      });
 
-      // const data = await res.json();
+      const data = await res.json();
 
-      // if (!res.ok) {
-      //   throw new Error(data.detail || 'Login failed');
-      // }
+      if (!res.ok) {
+        throw new Error(data.detail || 'Login failed');
+        
+      } else {
+        
+      // await AsyncStorage.setItem('userName', data.name);
+      console.log('Login successful, token stored');  
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Login Successful',
+        text2: `Welcome ${data.name}`,
+      });
+      await AsyncStorage.setItem('jwtToken', data.access_token);
+            navigation.replace('MainTabs');
+    }
+      
 
-      // await AsyncStorage.setItem('jwtToken', data.access_token);
-      // // await AsyncStorage.setItem('userName', data.name);
-      // console.log('Login successful, token stored');
-
-      // Toast.show({
-      //   type: 'success',
-      //   text1: 'Login Successful',
-      //   text2: `Welcome ${data.name}`,
-      // });
-
-      navigation.navigate('HomeScreen');
-      scheduleDailyNotification();
     } catch (err) {
       Toast.show({
         type: 'error',
@@ -382,3 +385,4 @@ const styles = StyleSheet.create({
   signupTxt: { color: COLORS.textSecondary, fontSize: FONT.sm },
   signupLink: { color: COLORS.primary, fontWeight: '700', fontSize: FONT.sm },
 });
+

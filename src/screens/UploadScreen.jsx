@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, SafeAreaView, StatusBar, Alert, ActivityIndicator,
+    StyleSheet, SafeAreaView, StatusBar, ActivityIndicator, Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -27,45 +27,54 @@ export default function UploadScreen({ navigation }) {
     const [fileName, setFileName] = useState(null);
     const [fileAsset, setFileAsset] = useState(null);
 
-    const pickFile = () => {
-        if (!selected) { Alert.alert('Select Scan', 'Choose a scan type first.'); return; }
+    const [showFileOptions, setShowFileOptions] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
-        Alert.alert(
-            'Upload File',
-            'Choose an option',
-            [
-                {
-                    text: 'Take Photo',
-                    onPress: () => {
-                        launchCamera(
-                            { mediaType: 'photo', quality: 0.8 },
-                            (response) => {
-                                handleImageResponse(response);
-                            }
-                        );
-                    }
-                },
-                {
-                    text: 'Choose from Gallery',
-                    onPress: () => {
-                        launchImageLibrary(
-                            { mediaType: 'photo', quality: 0.8, selectionLimit: 1 },
-                            (response) => {
-                                handleImageResponse(response);
-                            }
-                        );
-                    }
-                },
-                { text: 'Cancel', style: 'cancel' }
-            ],
-            { cancelable: true }
+    useEffect(() => {
+        if (toast.visible) {
+            const timer = setTimeout(() => {
+                setToast({ ...toast, visible: false });
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast.visible]);
+
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const pickFile = () => {
+        if (!selected) { 
+            showToast('Choose a scan type first.', 'warning');
+            return;
+        }
+        setShowFileOptions(true);
+    };
+
+    const handleCameraLaunch = () => {
+        setShowFileOptions(false);
+        launchCamera(
+            { mediaType: 'photo', quality: 0.8 },
+            (response) => {
+                handleImageResponse(response);
+            }
+        );
+    };
+
+    const handleGalleryLaunch = () => {
+        setShowFileOptions(false);
+        launchImageLibrary(
+            { mediaType: 'photo', quality: 0.8, selectionLimit: 1 },
+            (response) => {
+                handleImageResponse(response);
+            }
         );
     };
 
     const handleImageResponse = (response) => {
         if (response.didCancel) return;
         if (response.errorCode) {
-            Alert.alert('Error', response.errorMessage ?? 'Failed to pick file.');
+            showToast(response.errorMessage ?? 'Failed to pick file.', 'error');
             return;
         }
         const asset = response.assets?.[0];
@@ -78,7 +87,7 @@ export default function UploadScreen({ navigation }) {
 
     const analyze = async () => {
         if (!selected || !filePicked || !fileAsset) {
-            Alert.alert('Incomplete', 'Select scan type and upload a file first.');
+            showToast('Select scan type and upload a file first.', 'warning');
             return;
         }
 
@@ -106,6 +115,7 @@ export default function UploadScreen({ navigation }) {
             }
 
             console.log('Upload successful:', data);
+            showToast('Scan uploaded successfully!', 'success');
 
             // Navigate to Result screen with real or dummy data depending on response structure
             navigation.navigate('Result', {
@@ -115,7 +125,7 @@ export default function UploadScreen({ navigation }) {
 
         } catch (error) {
             console.error('Upload Error:', error);
-            Alert.alert('Upload Failed', error.message || 'An error occurred while uploading the scan.');
+            showToast(error.message || 'An error occurred while uploading the scan.', 'error');
         } finally {
             setAnalyzing(false);
         }
@@ -207,6 +217,48 @@ export default function UploadScreen({ navigation }) {
                 </View>
 
             </ScrollView>
+
+            {/* File Options Modal */}
+            <Modal
+                visible={showFileOptions}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowFileOptions(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Upload File</Text>
+                        <Text style={styles.modalSubtitle}>Choose an option</Text>
+
+                        <TouchableOpacity style={styles.modalButton} onPress={handleCameraLaunch}>
+                            <Text style={styles.modalButtonIcon}>📷</Text>
+                            <Text style={styles.modalButtonText}>Take Photo</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.modalButton} onPress={handleGalleryLaunch}>
+                            <Text style={styles.modalButtonIcon}>🖼️</Text>
+                            <Text style={styles.modalButtonText}>Choose from Gallery</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.modalButton, styles.modalButtonCancel]}
+                            onPress={() => setShowFileOptions(false)}
+                        >
+                            <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Toast Notification */}
+            {toast.visible && (
+                <View style={[styles.toast, styles[`toast${toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}`]]}>
+                    <Text style={styles.toastIcon}>
+                        {toast.type === 'error' ? '❌' : toast.type === 'success' ? '✅' : toast.type === 'warning' ? '⚠️' : 'ℹ️'}
+                    </Text>
+                    <Text style={styles.toastText}>{toast.message}</Text>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -253,4 +305,24 @@ const styles = StyleSheet.create({
     analyzeBtnOff: { backgroundColor: COLORS.border, shadowOpacity: 0, elevation: 0 },
     analyzeTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.lg },
     analyzeRow: { flexDirection: 'row', alignItems: 'center' },
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: COLORS.background, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, paddingTop: SPACING.lg, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xl },
+    modalTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.xs },
+    modalSubtitle: { fontSize: FONT.sm, color: COLORS.textSecondary, marginBottom: SPACING.lg },
+    modalButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.md, paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, marginBottom: SPACING.md, ...SHADOW.sm },
+    modalButtonIcon: { fontSize: 20, marginRight: SPACING.md },
+    modalButtonText: { fontSize: FONT.md, fontWeight: '600', color: COLORS.textPrimary, flex: 1 },
+    modalButtonCancel: { backgroundColor: COLORS.border },
+    modalButtonTextCancel: { fontSize: FONT.md, fontWeight: '600', color: COLORS.textSecondary, textAlign: 'center', flex: 1 },
+
+    // Toast Styles
+    toast: { position: 'absolute', bottom: SPACING.lg, left: SPACING.lg, right: SPACING.lg, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.md, borderRadius: RADIUS.md, ...SHADOW.md },
+    toastInfo: { backgroundColor: COLORS.primary },
+    toastSuccess: { backgroundColor: '#10B981' },
+    toastError: { backgroundColor: '#EF4444' },
+    toastWarning: { backgroundColor: '#F59E0B' },
+    toastIcon: { fontSize: 18, marginRight: SPACING.sm },
+    toastText: { flex: 1, color: COLORS.textInverse, fontSize: FONT.sm, fontWeight: '600' },
 });

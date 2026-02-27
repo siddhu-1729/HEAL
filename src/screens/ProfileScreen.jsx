@@ -43,7 +43,7 @@ export default function ProfileScreen({ navigation }) {
                 return;
             }
 
-            const response = await fetch('http://192.168.1.8:8000/profile', {
+            const response = await fetch('http://192.168.68.157:8000/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -142,9 +142,9 @@ export default function ProfileScreen({ navigation }) {
                     </View>
                     <Text style={styles.heroName}>{profileData.firstName} {profileData.lastName}</Text>
                     <Text style={styles.heroEmail}>{profileData.email}</Text>
-                    <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('Settings')}>
+                    {/* <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('Settings')}>
                         <Text style={styles.editBtnText}>✏️  Edit Profile</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </LinearGradient>
 
                 {/* ── Health Badges ── */}

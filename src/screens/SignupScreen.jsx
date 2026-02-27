@@ -222,21 +222,21 @@ export default function SignupScreen({ navigation }) {
 
       console.log('Sending signup data:', signupData);
 
-      // const response = await fetch('http://192.168.1.8:8000/signup', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(signupData),
-      // });
+      const response = await fetch('http://192.168.68.157:8000/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(signupData),
+      });
 
-      // const data = await response.json();
+      const data = await response.json();
 
-      // if (!response.ok) {
-      //   throw new Error(data.detail || data.message || 'Signup failed');
-      // }
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Signup failed');
+      }
 
-      // console.log('Signup successful:', data);
+      console.log('Signup successful:', data);
       setFormData(prev => ({ ...prev, loading: false }));
       Toast.show({
         type: 'success',

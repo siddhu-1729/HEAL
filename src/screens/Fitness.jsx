@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, FlatList, Alert,
+  StyleSheet, SafeAreaView, StatusBar, FlatList, Alert, Modal, TextInput,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
@@ -13,11 +13,11 @@ const DAILY_STATS = [
   { label: 'Sleep', value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
 ];
 
-const WORKOUTS = [
-  { id: '1', name: 'Morning Run', duration: '30 min', calories: 320, type: 'Cardio', icon: '🏃', done: true, colors: COLORS.gradPrimary },
-  { id: '2', name: 'Push-Up Circuit', duration: '20 min', calories: 180, type: 'Strength', icon: '💪', done: true, colors: COLORS.gradAccent },
-  { id: '3', name: 'Yoga & Stretch', duration: '25 min', calories: 120, type: 'Flex', icon: '🧘', done: false, colors: COLORS.gradPurple },
-  { id: '4', name: 'Cycling', duration: '45 min', calories: 450, type: 'Cardio', icon: '🚴', done: false, colors: COLORS.gradBone },
+const INITIAL_WORKOUTS = [
+  { id: '1', name: 'Morning Run', duration: '30 min', calories: 320, type: 'Cardio', icon: '🏃', done: false, colors: COLORS.gradPrimary, threshold: 30, elapsed: 0, isActive: false },
+  { id: '2', name: 'Push-Up Circuit', duration: '20 min', calories: 180, type: 'Strength', icon: '💪', done: false, colors: COLORS.gradAccent, threshold: 20, elapsed: 0, isActive: false },
+  { id: '3', name: 'Yoga & Stretch', duration: '25 min', calories: 120, type: 'Flex', icon: '🧘', done: false, colors: COLORS.gradPurple, threshold: 25, elapsed: 0, isActive: false },
+  { id: '4', name: 'Cycling', duration: '45 min', calories: 450, type: 'Cardio', icon: '🚴', done: false, colors: COLORS.gradBone, threshold: 45, elapsed: 0, isActive: false },
 ];
 
 const WEEKLY = [
@@ -26,13 +26,97 @@ const WEEKLY = [
 ];
 
 export default function FitnessScreen({ navigation }) {
-  const [workouts, setWorkouts] = useState(WORKOUTS);
+  const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
   const [water, setWater] = useState(6);
   const [showBMI, setShowBMI] = useState(false);
   const [weight, setWeight] = useState('70');
   const [height, setHeight] = useState('170');
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [activityName, setActivityName] = useState('');
+  const [activityDuration, setActivityDuration] = useState('');
+  const [activityType, setActivityType] = useState('Cardio');
+  const [editingId, setEditingId] = useState(null);
+  const [editingThreshold, setEditingThreshold] = useState('');
+  const [showThresholdModal, setShowThresholdModal] = useState(false);
 
-  const toggleWorkout = (id) => setWorkouts(prev => prev.map(w => w.id === id ? { ...w, done: !w.done } : w));
+  // Timer effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWorkouts(prev => prev.map(w => {
+        if (w.isActive && w.elapsed < w.threshold * 60) {
+          return { ...w, elapsed: w.elapsed + 1 };
+        } else if (w.isActive && w.elapsed >= w.threshold * 60) {
+          Alert.alert('Time Reached!', `You've completed ${w.name}!`);
+          return { ...w, isActive: false, done: true };
+        }
+        return w;
+      }));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleTimer = (id) => {
+    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, isActive: !w.isActive } : w));
+  };
+
+  const stopWorkout = (id) => {
+    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, isActive: false } : w));
+  };
+
+  const resetWorkout = (id) => {
+    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, elapsed: 0, isActive: false } : w));
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const addActivity = () => {
+    if (!activityName.trim() || !activityDuration.trim()) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+    const newActivity = {
+      id: Date.now().toString(),
+      name: activityName,
+      duration: `${activityDuration} min`,
+      calories: Math.floor(Math.random() * 300 + 100),
+      type: activityType,
+      icon: '🏋️',
+      done: false,
+      colors: COLORS.gradPrimary,
+      threshold: parseInt(activityDuration),
+      elapsed: 0,
+      isActive: false,
+    };
+    setWorkouts([...workouts, newActivity]);
+    setActivityName('');
+    setActivityDuration('');
+    setActivityType('Cardio');
+    setShowAddActivity(false);
+  };
+
+  const updateThreshold = (id) => {
+    if (!editingThreshold.trim()) {
+      Alert.alert('Error', 'Please enter a threshold value');
+      return;
+    }
+    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, threshold: parseInt(editingThreshold), elapsed: 0 } : w));
+    setEditingThreshold('');
+    setEditingId(null);
+    setShowThresholdModal(false);
+  };
+
+  const deleteActivity = (id) => {
+    if (id === '1' || id === '2' || id === '3' || id === '4') {
+      Alert.alert('Cannot Delete', 'Default activities cannot be deleted');
+      return;
+    }
+    setWorkouts(prev => prev.filter(w => w.id !== id));
+  };
+
   const doneCount = workouts.filter(w => w.done).length;
 
   const bmi = weight && height ? (parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1) : null;
@@ -48,7 +132,7 @@ export default function FitnessScreen({ navigation }) {
         <View style={styles.topBar}>
           <View>
             <Text style={styles.pageTitle}>Fitness</Text>
-            <Text style={styles.pageSub}>Today's Activity</Text>
+            <Text style={styles.pageSub}>Workout & Timer</Text>
           </View>
           <TouchableOpacity
             style={styles.bmiBtn}
@@ -133,55 +217,182 @@ export default function FitnessScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ── Weekly chart ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Progress</Text>
-          <View style={styles.card}>
-            <View style={styles.weekRow}>
-              {WEEKLY.map(w => (
-                <View key={w.day} style={styles.weekCol}>
-                  <View style={styles.weekBarWrap}>
-                    <LinearGradient
-                      colors={w.pct >= 80 ? COLORS.gradAccent : w.pct >= 50 ? COLORS.gradPrimary : [COLORS.border, COLORS.border]}
-                      style={[styles.weekBar, { height: `${w.pct}%` }]}
-                    />
-                  </View>
-                  <Text style={styles.weekDay}>{w.day}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* ── Workouts ── */}
+        {/* ── Fitness Activities with Timer ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Workouts</Text>
-            <Text style={styles.seeAll}>{doneCount}/{workouts.length} done</Text>
-          </View>
-          {workouts.map(w => (
+            <Text style={styles.sectionTitle}>Fitness Activities</Text>
             <TouchableOpacity
-              key={w.id}
-              style={[styles.workoutCard, w.done && styles.workoutCardDone]}
-              onPress={() => toggleWorkout(w.id)}
-              activeOpacity={0.8}
+              onPress={() => setShowAddActivity(true)}
+              style={styles.addBtn}
             >
-              <LinearGradient colors={w.done ? [COLORS.border, COLORS.border] : w.colors}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.workoutIconBox}>
-                <Text style={styles.workoutIcon}>{w.done ? '✅' : w.icon}</Text>
-              </LinearGradient>
-              <View style={styles.workoutInfo}>
-                <Text style={[styles.workoutName, w.done && styles.workoutDoneText]}>{w.name}</Text>
-                <Text style={styles.workoutMeta}>⏱ {w.duration}  ·  🔥 {w.calories} kcal  ·  {w.type}</Text>
-              </View>
-              <View style={[styles.workoutCheck, { backgroundColor: w.done ? COLORS.success : COLORS.border }]}>
-                <Text style={styles.workoutCheckTxt}>{w.done ? '✓' : '○'}</Text>
-              </View>
+              <Text style={styles.addBtnTxt}>+ Add</Text>
             </TouchableOpacity>
-          ))}
+          </View>
+
+          {workouts.map(w => {
+            const progress = w.threshold > 0 ? (w.elapsed / (w.threshold * 60)) * 100 : 0;
+            const isCompleted = w.elapsed >= w.threshold * 60;
+
+            return (
+              <View key={w.id} style={styles.activityCard}>
+                <LinearGradient colors={w.done ? [COLORS.border, COLORS.border] : w.colors}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.activityIconBox}>
+                  <Text style={styles.activityIcon}>{w.done ? '✅' : w.icon}</Text>
+                </LinearGradient>
+
+                <View style={styles.activityInfo}>
+                  <Text style={[styles.activityName, w.done && styles.activityDoneText]}>{w.name}</Text>
+                  <Text style={styles.activityMeta}>{w.type} · {w.calories} kcal</Text>
+
+                  {/* Timer Display */}
+                  <View style={styles.timerSection}>
+                    <Text style={styles.timerLabel}>Time: <Text style={[styles.timerValue, isCompleted && styles.timerCompleted]}>{formatTime(w.elapsed)}</Text> / {w.threshold}:00</Text>
+                    {isCompleted && <Text style={styles.completedBadge}>✓ Completed</Text>}
+                  </View>
+
+                  {/* Progress Bar */}
+                  <View style={styles.progressBarBg}>
+                    <LinearGradient
+                      colors={progress >= 100 ? [COLORS.success, COLORS.success] : w.colors}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.progressBarFill, { width: `${Math.min(progress, 100)}%` }]}
+                    />
+                  </View>
+                </View>
+
+                {/* Timer Controls */}
+                <View style={styles.timerControls}>
+                  <TouchableOpacity
+                    style={[styles.timerBtn, w.isActive && styles.timerBtnActive]}
+                    onPress={() => toggleTimer(w.id)}
+                  >
+                    <Text style={styles.timerBtnTxt}>{w.isActive ? '⏸' : '▶'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.timerBtn}
+                    onPress={() => stopWorkout(w.id)}
+                  >
+                    <Text style={styles.timerBtnTxt}>⏹</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.timerBtn}
+                    onPress={() => {
+                      setEditingId(w.id);
+                      setEditingThreshold(w.threshold.toString());
+                      setShowThresholdModal(true);
+                    }}
+                  >
+                    <Text style={styles.timerBtnTxt}>⚙️</Text>
+                  </TouchableOpacity>
+
+                  {(w.id !== '1' && w.id !== '2' && w.id !== '3' && w.id !== '4') && (
+                    <TouchableOpacity
+                      style={[styles.timerBtn, styles.deleteBtnColor]}
+                      onPress={() => Alert.alert('Delete', 'Remove this activity?', [
+                        { text: 'Cancel', onPress: () => { } },
+                        { text: 'Delete', onPress: () => deleteActivity(w.id), style: 'destructive' }
+                      ])}
+                    >
+                      <Text style={styles.timerBtnTxt}>🗑</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
 
       </ScrollView>
+
+      {/* ── Add Activity Modal ── */}
+      <Modal visible={showAddActivity} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Activity</Text>
+              <TouchableOpacity onPress={() => setShowAddActivity(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>Activity Name</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g., Weight Lifting"
+                placeholderTextColor={COLORS.textMuted}
+                value={activityName}
+                onChangeText={setActivityName}
+              />
+
+              <Text style={styles.modalLabel}>Duration (minutes)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g., 30"
+                placeholderTextColor={COLORS.textMuted}
+                value={activityDuration}
+                onChangeText={setActivityDuration}
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.modalLabel}>Activity Type</Text>
+              <View style={styles.typeSelector}>
+                {['Cardio', 'Strength', 'Flex', 'Sports'].map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.typeBtn, activityType === type && styles.typeBtnActive]}
+                    onPress={() => setActivityType(type)}
+                  >
+                    <Text style={[styles.typeBtnTxt, activityType === type && styles.typeBtnTxtActive]}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity style={styles.addActivityBtn} onPress={addActivity}>
+                <Text style={styles.addActivityBtnTxt}>Add Activity</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Threshold Modal ── */}
+      <Modal visible={showThresholdModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContentSmall}>
+            <Text style={styles.modalTitle}>Set Time Threshold</Text>
+            <Text style={styles.thresholdLabel}>Minutes:</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter minutes"
+              placeholderTextColor={COLORS.textMuted}
+              value={editingThreshold}
+              onChangeText={setEditingThreshold}
+              keyboardType="number-pad"
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => {
+                  setShowThresholdModal(false);
+                  setEditingId(null);
+                  setEditingThreshold('');
+                }}
+              >
+                <Text style={styles.modalBtnTxt}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.confirmBtn]}
+                onPress={() => updateThreshold(editingId)}
+              >
+                <Text style={[styles.modalBtnTxt, { color: COLORS.textInverse }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -212,6 +423,8 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
   sectionTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.md },
   seeAll: { fontSize: FONT.sm, color: COLORS.primary, fontWeight: '700' },
+  addBtn: { backgroundColor: COLORS.success, borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  addBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.sm },
   card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.sm },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
@@ -230,20 +443,130 @@ const styles = StyleSheet.create({
   waterBarBg: { height: 8, backgroundColor: COLORS.border, borderRadius: 4, overflow: 'hidden' },
   waterBarFill: { height: '100%', borderRadius: 4 },
 
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', height: 100, alignItems: 'flex-end' },
-  weekCol: { alignItems: 'center', flex: 1 },
-  weekBarWrap: { width: 14, height: 80, backgroundColor: COLORS.border, borderRadius: 7, overflow: 'hidden', justifyContent: 'flex-end' },
-  weekBar: { width: '100%', borderRadius: 7 },
-  weekDay: { fontSize: 9, color: COLORS.textMuted, marginTop: 4 },
+  // Activity Timer Styles
+  activityCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOW.sm,
+  },
+  activityIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: RADIUS.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  activityIcon: { fontSize: 24 },
+  activityInfo: { flex: 1, marginRight: SPACING.sm },
+  activityName: { fontSize: FONT.base, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 3 },
+  activityDoneText: { textDecorationLine: 'line-through', color: COLORS.textMuted },
+  activityMeta: { fontSize: FONT.xs, color: COLORS.textSecondary, marginBottom: 6 },
+  
+  timerSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  timerLabel: { fontSize: FONT.xs, color: COLORS.textSecondary, fontWeight: '600' },
+  timerValue: { color: COLORS.primary, fontWeight: '800' },
+  timerCompleted: { color: COLORS.success },
+  completedBadge: { fontSize: FONT.xs, color: COLORS.success, fontWeight: '700' },
 
-  workoutCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', ...SHADOW.sm },
-  workoutCardDone: { opacity: 0.7 },
-  workoutIconBox: { width: 46, height: 46, borderRadius: RADIUS.md, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
-  workoutIcon: { fontSize: 22 },
-  workoutInfo: { flex: 1 },
-  workoutName: { fontSize: FONT.base, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 3 },
-  workoutDoneText: { textDecorationLine: 'line-through', color: COLORS.textMuted },
-  workoutMeta: { fontSize: FONT.xs, color: COLORS.textSecondary },
-  workoutCheck: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  workoutCheckTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.sm },
+  progressBarBg: { width: '100%', height: 6, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+
+  timerControls: { flexDirection: 'row', gap: 6 },
+  timerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOW.xs,
+  },
+  timerBtnActive: { backgroundColor: COLORS.success },
+  timerBtnTxt: { fontSize: FONT.lg, color: COLORS.textPrimary },
+  deleteBtnColor: { backgroundColor: COLORS.danger },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  modalContentSmall: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
+    ...SHADOW.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.textPrimary },
+  modalClose: { fontSize: FONT.lg, color: COLORS.textSecondary, fontWeight: '700' },
+  modalBody: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md },
+  modalLabel: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.textPrimary, marginBottom: SPACING.sm },
+  modalInput: {
+    backgroundColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.lg,
+    fontSize: FONT.base,
+  },
+  thresholdLabel: {
+    fontSize: FONT.base,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+  },
+
+  typeSelector: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.lg, flexWrap: 'wrap' },
+  typeBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.border,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  typeBtnTxt: { color: COLORS.textSecondary, fontWeight: '600', fontSize: FONT.sm },
+  typeBtnTxtActive: { color: COLORS.textInverse },
+
+  addActivityBtn: {
+    backgroundColor: COLORS.success,
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+  },
+  addActivityBtnTxt: { color: COLORS.textInverse, fontWeight: '700', fontSize: FONT.base },
+
+  modalButtonRow: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.lg },
+  modalBtn: { flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.lg, alignItems: 'center' },
+  cancelBtn: { backgroundColor: COLORS.border },
+  confirmBtn: { backgroundColor: COLORS.primary },
+  modalBtnTxt: { color: COLORS.textPrimary, fontWeight: '700', fontSize: FONT.base },
 });
