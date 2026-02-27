@@ -19,6 +19,7 @@ import Toast from 'react-native-toast-message';
 const STEPS = ['Personal', 'Medical', 'Security'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GENDERS = ['Male', 'Female', 'Other'];
+const COMMON_CONDITIONS = ['None', 'Diabetes', 'Blood Pressure (BP)', 'Asthma', 'Allergies', 'Thyroid', 'Other'];
 
 const InputField = ({
   icon,
@@ -103,6 +104,38 @@ const Selector = ({
   </View>
 );
 
+const MultiSelector = ({ label, options, selected = [], onToggle, required = false, error = '' }) => (
+  <View style={styles.fieldWrap}>
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{label}</Text>
+      {required && <Text style={styles.requiredStar}>*</Text>}
+    </View>
+    <View style={[styles.chipRow, error && styles.chipRowError]}>
+      {options.map(opt => {
+        const isActive = selected.includes(opt);
+        return (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.selectChip, isActive && styles.selectChipActive]}
+            activeOpacity={0.7}
+            onPress={() => onToggle(opt)}
+          >
+            <Text
+              style={[
+                styles.selectChipTxt,
+                isActive && styles.selectChipTxtActive,
+              ]}
+            >
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+    {error && <Text style={styles.errorText}>{error}</Text>}
+  </View>
+);
+
 export default function SignupScreen({ navigation }) {
   const [step, setStep] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
@@ -116,9 +149,8 @@ export default function SignupScreen({ navigation }) {
 
     gender: '',
     bloodGroup: '',
-    // weight: '',
-    // height: '',
-    // conditions: '',
+    conditions: [],
+    customCondition: '',
     address: '',
     city: '',
     state: '',
@@ -163,6 +195,10 @@ export default function SignupScreen({ navigation }) {
       if (!formData.gender) newErrors.gender = 'Please select your gender';
       if (!formData.bloodGroup)
         newErrors.bloodGroup = 'Please select blood group';
+      if ((formData.conditions || []).length === 0)
+        newErrors.conditions = 'Please select at least one option';
+      if ((formData.conditions || []).includes('Other') && !formData.customCondition.trim())
+        newErrors.conditions = 'Please specify your other conditions';
       if (!formData.address.trim()) newErrors.address = 'Address is required';
       if (!formData.city.trim()) newErrors.city = 'City is required';
       if (!formData.state.trim()) newErrors.state = 'State is required';
@@ -211,6 +247,9 @@ export default function SignupScreen({ navigation }) {
         age: age,
         gender: formData.gender,
         bloodGroup: formData.bloodGroup,
+        conditions: (formData.conditions || []).includes('Other')
+          ? [...(formData.conditions || []).filter(c => c !== 'Other'), formData.customCondition].join(', ')
+          : (formData.conditions || []).join(', '),
         address: formData.address.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
@@ -390,7 +429,7 @@ export default function SignupScreen({ navigation }) {
                 icon="🎂"
                 label="Date of Birth"
                 value={dobDisplay}
-                onChange={() => {}}
+                onChange={() => { }}
                 placeholder="Tap to select date"
                 editable={false}
                 onPress={() =>
@@ -440,15 +479,39 @@ export default function SignupScreen({ navigation }) {
                   <InputField icon="📏" label="Height (cm)" value={formData.height} onChange={e => setFormData(prev => ({ ...prev, height: e }))} placeholder="170" keyboard="numeric" />
                 </View> */}
               </View>
-              <InputField
-                icon="🏥"
-                label="Existing Conditions (optional)"
-                value={formData.conditions}
-                onChange={e =>
-                  setFormData(prev => ({ ...prev, conditions: e }))
-                }
-                placeholder="e.g. Diabetes, Hypertension"
+              <MultiSelector
+                label="Existing Conditions"
+                options={COMMON_CONDITIONS}
+                selected={formData.conditions}
+                onToggle={cond => {
+                  setFormData(prev => {
+                    let newConds = [...prev.conditions];
+                    if (cond === 'None') {
+                      newConds = ['None'];
+                    } else {
+                      newConds = newConds.filter(c => c !== 'None');
+                      if (newConds.includes(cond)) {
+                        newConds = newConds.filter(c => c !== cond);
+                      } else {
+                        newConds.push(cond);
+                      }
+                    }
+                    return { ...prev, conditions: newConds };
+                  });
+                }}
+                required={true}
+                error={formData.errors.conditions}
               />
+              {(formData.conditions || []).includes('Other') && (
+                <InputField
+                  icon="✍️"
+                  label="Please Specify Other Conditions"
+                  value={formData.customCondition}
+                  onChange={e => setFormData(prev => ({ ...prev, customCondition: e }))}
+                  placeholder="e.g. Migraine, Arthritis"
+                  required={true}
+                />
+              )}
 
               <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>
                 Address Information
@@ -462,10 +525,6 @@ export default function SignupScreen({ navigation }) {
                 required={true}
                 error={formData.errors.address}
               />
-              <InputField icon="🏥" label="Existing Conditions (optional)" value={formData.conditions} onChange={e => setFormData(prev => ({ ...prev, conditions: e }))} placeholder="e.g. Diabetes, Hypertension" />
-
-              <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Address Information</Text>
-              <InputField icon="🏠" label="Address" value={formData.address} onChange={e => setFormData(prev => ({ ...prev, address: e }))} placeholder="123 Main Street" required={true} error={formData.errors.address} />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
                   <InputField
@@ -560,12 +619,6 @@ export default function SignupScreen({ navigation }) {
                 required={true}
                 error={formData.errors.confirm}
               />
-              <InputField icon="🚨" label="Emergency Contact Name" value={formData.emergencyContactName} onChange={e => setFormData(prev => ({ ...prev, emergencyContactName: e }))} placeholder="e.g. Family Member" required={true} error={formData.errors.emergencyContactName} />
-              <InputField icon="📞" label="Emergency Contact Phone" value={formData.emergencyContactPhone} onChange={e => setFormData(prev => ({ ...prev, emergencyContactPhone: e }))} placeholder="+91 9876543210" keyboard="phone-pad" required={true} error={formData.errors.emergencyContactPhone} />
-
-              <Text style={[styles.stepTitle, { marginTop: SPACING.lg }]}>Create Password</Text>
-              <InputField icon="🔒" label="Password" value={formData.password} onChange={e => setFormData(prev => ({ ...prev, password: e }))} placeholder="Min 6 characters" secure={formData.secureP} onSecureToggle={() => setFormData(prev => ({ ...prev, secureP: !prev.secureP }))} required={true} error={formData.errors.password} />
-              <InputField icon="🔐" label="Confirm Password" value={formData.confirm} onChange={e => setFormData(prev => ({ ...prev, confirm: e }))} placeholder="Re-enter password" secure={formData.secureC} onSecureToggle={() => setFormData(prev => ({ ...prev, secureC: !prev.secureC }))} required={true} error={formData.errors.confirm} />
               <View style={styles.termsRow}>
                 <Text style={styles.termsTxt}>
                   By signing up you agree to our{' '}
