@@ -4,14 +4,15 @@ import {
   StyleSheet, SafeAreaView, StatusBar, FlatList, Alert, Modal, TextInput,
   Animated, Dimensions, Easing, ActivityIndicator
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import Video from 'react-native-video';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../theme/theme';
 import { useAppTheme, useFitness } from '../context/AppContext';
 
-const getDailyStats = (s) => [
-  { label: s.water, value: '6', target: '8', icon: '💧', pct: 75, color: '#00C6AE' },
-  { label: s.sleep, value: '7.2h', target: '8h', icon: '🌙', pct: 90, color: COLORS.gradPurple[0] },
+const getDailyStats = (s, sleepHrs, waterGlasses) => [
+  { label: s.water, value: String(waterGlasses), target: '8', icon: '💧', pct: Math.min(100, Math.round((waterGlasses / 8) * 100)), color: '#00C6AE', key: 'water' },
+  { label: s.sleep, value: `${sleepHrs}h`, target: '8h', icon: '🌙', pct: Math.min(100, Math.round((sleepHrs / 8) * 100)), color: COLORS.gradPurple[0], key: 'sleep' },
 ];
 const getPresetActivities = (s) => [
   { name: s.actRunning, key: 'Running' },
@@ -53,8 +54,10 @@ const getVideoSource = (item) => {
 export default function FitnessScreen({ navigation }) {
   const { strings } = useAppTheme();
   const { workouts, setWorkouts, activeSessionIndex, setActiveSessionIndex, sendFitnessData, syncResult, setSyncResult } = useFitness();
-  const DAILY_STATS = getDailyStats(strings);
   const PRESET_ACTIVITIES = getPresetActivities(strings);
+
+  const [showSleepInput, setShowSleepInput] = useState(false);
+  const [sleepInputVal, setSleepInputVal] = useState('');
 
   const [water, setWater] = useState(6);
   const [showBMI, setShowBMI] = useState(false);
@@ -68,6 +71,19 @@ export default function FitnessScreen({ navigation }) {
   const [editingThreshold, setEditingThreshold] = useState('');
   const [showThresholdModal, setShowThresholdModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [userSleepHours, setUserSleepHours] = useState(7.5);
+
+  const DAILY_STATS = getDailyStats(strings, userSleepHours, water);
+
+  useEffect(() => {
+    const fetchSleep = async () => {
+      try {
+        const h = await AsyncStorage.getItem('sleepHours');
+        if (h) setUserSleepHours(parseFloat(h));
+      } catch (e) { }
+    };
+    fetchSleep();
+  }, []);
 
   const currentPayload = React.useMemo(() => {
     let totalDuration = 0;
@@ -92,12 +108,12 @@ export default function FitnessScreen({ navigation }) {
     return {
       bmi: bmiVal ? parseFloat(bmiVal) : null,
       age: 25, // TODO: Pull from user profile when implemented
-      sleep_hours: 7.5, // TODO: Pull from user sleep tracker when implemented
+      sleep_hours: userSleepHours,
       workout_count: totalCount,
       workout_duration: totalDuration,
       activitiesData: activities
     };
-  }, [workouts, weight, height]);
+  }, [workouts, weight, height, userSleepHours]);
 
 
   const flatListRef = useRef(null);
@@ -267,18 +283,66 @@ export default function FitnessScreen({ navigation }) {
           <Text style={styles.sectionTitle}>{strings.todaysStats}</Text>
           <View style={styles.statsGrid}>
             {DAILY_STATS.map(s => (
-              <View key={s.label} style={styles.statCard}>
-                <Text style={styles.statIcon}>{s.icon}</Text>
-                <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
-                <Text style={styles.statTarget}>/ {s.target}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-                <View style={styles.statBarBg}>
-                  <View style={[styles.statBarFill, { width: `${s.pct}%`, backgroundColor: s.color }]} />
+              s.key === 'sleep' ? (
+                <TouchableOpacity key={s.label} style={styles.statCard} onPress={() => { setSleepInputVal(String(userSleepHours)); setShowSleepInput(true); }}>
+                  <Text style={styles.statIcon}>{s.icon}</Text>
+                  <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
+                  <Text style={styles.statTarget}>/ {s.target}</Text>
+                  <Text style={styles.statLabel}>{s.label}</Text>
+                  <View style={styles.statBarBg}>
+                    <View style={[styles.statBarFill, { width: `${s.pct}%`, backgroundColor: s.color }]} />
+                  </View>
+                  <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>Tap to update</Text>
+                </TouchableOpacity>
+              ) : (
+                <View key={s.label} style={styles.statCard}>
+                  <Text style={styles.statIcon}>{s.icon}</Text>
+                  <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
+                  <Text style={styles.statTarget}>/ {s.target}</Text>
+                  <Text style={styles.statLabel}>{s.label}</Text>
+                  <View style={styles.statBarBg}>
+                    <View style={[styles.statBarFill, { width: `${s.pct}%`, backgroundColor: s.color }]} />
+                  </View>
                 </View>
-              </View>
+              )
             ))}
           </View>
         </View>
+
+        {/* Sleep Input Modal */}
+        <Modal visible={showSleepInput} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: SPACING.lg }}>
+            <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.xxl, width: '100%', alignItems: 'center', ...SHADOW.lg }}>
+              <Text style={{ fontSize: 36, marginBottom: SPACING.sm }}>🌙</Text>
+              <Text style={{ fontSize: FONT.lg, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 6 }}>Sleep Hours</Text>
+              <Text style={{ fontSize: FONT.sm, color: COLORS.textSecondary, marginBottom: SPACING.lg, textAlign: 'center' }}>How many hours did you sleep last night?</Text>
+              <TextInput
+                style={{ width: '100%', backgroundColor: COLORS.background, borderRadius: RADIUS.md, fontSize: FONT.xl, padding: SPACING.md, textAlign: 'center', fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.lg, borderWidth: 1, borderColor: COLORS.border }}
+                keyboardType="numeric"
+                maxLength={4}
+                placeholder="e.g. 7.5"
+                placeholderTextColor={COLORS.textMuted}
+                value={sleepInputVal}
+                onChangeText={setSleepInputVal}
+              />
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <TouchableOpacity style={{ flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.full, backgroundColor: COLORS.background, alignItems: 'center', borderWidth: 1, borderColor: COLORS.border }} onPress={() => setShowSleepInput(false)}>
+                  <Text style={{ color: COLORS.textSecondary, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center' }} onPress={async () => {
+                  const val = parseFloat(sleepInputVal);
+                  if (!isNaN(val) && val > 0 && val <= 24) {
+                    setUserSleepHours(val);
+                    await AsyncStorage.setItem('sleepHours', String(val));
+                  }
+                  setShowSleepInput(false);
+                }}>
+                  <Text style={{ color: COLORS.textInverse, fontWeight: '700' }}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* ── Water tracker ── */}
         <View style={styles.section}>

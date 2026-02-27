@@ -50,15 +50,27 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // TODO: perform real login request here. Example (commented):
-      // const res = await fetch(`${host}/login`, { method: 'POST', ... });
-      // const data = await res.json();
-      // if (!res.ok) throw new Error(data.detail || 'Login failed');
-      // await AsyncStorage.setItem('jwtToken', data.access_token);
+      const host = 'http://192.168.68.102:8000';
+      const res = await fetch(`${host}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
 
-      // For now, navigate into the tab navigator so bottom bar shows
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      // Save token and user name
+      await AsyncStorage.setItem('jwtToken', data.access_token);
+      const nameFromEmail = email.split('@')[0];
+      await AsyncStorage.setItem('userName', data.name || nameFromEmail);
+
+      Toast.show({ type: 'success', text1: 'Login Successful', text2: 'Welcome back!' });
       scheduleDailyNotification();
+      setTimeout(() => {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }, 500);
     } catch (err) {
       Toast.show({ type: 'error', text1: 'Login Error', text2: err.message || 'Unable to login' });
     } finally {

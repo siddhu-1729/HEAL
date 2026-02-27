@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, FlatList, Image,
+  StyleSheet, SafeAreaView, StatusBar, FlatList, Image, Modal, TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,22 +16,20 @@ const getQuickActions = (strings) => [
   { id: 4, title: strings.scripts, subtitle: strings.scriptsSub, icon: '💊', color: COLORS.gradSuccess },
 ];
 
-const getHealthMetrics = (strings) => [
-  { label: strings.heartRate, value: '72', unit: 'bpm', icon: '❤️', color: COLORS.danger },
-  { label: strings.bp, value: '120/80', unit: 'mmHg', icon: '📊', color: COLORS.primary },
-  { label: strings.temp, value: '98.6', unit: '°F', icon: '🌡️', color: COLORS.warning },
-];
 
 const UPCOMING_APPOINTMENTS = [
   { id: 1, doctorName: 'AI Brain Scan Analysis', specialty: 'Neuro-AI Module', date: 'Today', time: '2:30 PM', initials: '🧠' },
   { id: 2, doctorName: 'AI Bone Density Report', specialty: 'Ortho-AI Module', date: 'Tomorrow', time: '10:00 AM', initials: '🦴' },
 ];
 
+
+// navigation prop may be optional for screens; type as any to satisfy TS
 export default function HomeScreen({ navigation }) {
   const { strings, syncResult } = useAppTheme();
   const QUICK_ACTIONS = getQuickActions(strings);
-  const HEALTH_METRICS = getHealthMetrics(strings);
   const [userName, setUserName] = useState('User');
+  const [showSleepModal, setShowSleepModal] = useState(false);
+  const [sleepHours, setSleepHours] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -39,6 +37,13 @@ export default function HomeScreen({ navigation }) {
       try {
         const name = await AsyncStorage.getItem('userName');
         if (mounted && name) setUserName(name);
+
+        const existingSleep = await AsyncStorage.getItem('sleepHours');
+        if (!existingSleep) {
+          setShowSleepModal(true);
+        } else {
+          setSleepHours(existingSleep);
+        }
       } catch (err) {
         // ignore
       }
@@ -66,16 +71,6 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const renderMetric = ({ item }) => (
-    <View style={styles.metricCard}>
-      <Text style={styles.metricEmoji}>{item.icon}</Text>
-      <Text style={styles.metricLabel}>{item.label}</Text>
-      <View style={styles.metricValRow}>
-        <Text style={[styles.metricVal, { color: item.color }]}>{item.value}</Text>
-      </View>
-      <Text style={styles.metricUnit}>{item.unit}</Text>
-    </View>
-  );
 
   const renderAppointment = ({ item }) => (
     <TouchableOpacity style={styles.apptCard} activeOpacity={0.8}>
@@ -93,9 +88,45 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  const saveSleepData = async () => {
+    try {
+      if (sleepHours.trim()) {
+        await AsyncStorage.setItem('sleepHours', sleepHours);
+      }
+    } catch (err) { }
+    setShowSleepModal(false);
+  };
+
+  // begin component JSX return
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* ── Sleep Input Modal ── */}
+      <Modal visible={showSleepModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.sleepModalCard}>
+            <Text style={styles.sleepModalIcon}>🌙</Text>
+            <Text style={styles.sleepModalTitle}>How did you sleep?</Text>
+            <Text style={styles.sleepModalDesc}>Let us know your total hours of sleep so we can analyze your recovery accurately.</Text>
+
+            <TextInput
+              style={styles.sleepInput}
+              keyboardType="numeric"
+              maxLength={4}
+              placeholder="e.g. 7.5"
+              placeholderTextColor={COLORS.textMuted}
+              value={sleepHours}
+              onChangeText={setSleepHours}
+            />
+
+            <TouchableOpacity style={styles.sleepBtn} onPress={saveSleepData}>
+              <Text style={styles.sleepBtnTxt}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
         {/* ── Top bar ── */}
@@ -143,20 +174,6 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* ── Health metrics ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{strings.healthMetrics}</Text>
-            {/* <TouchableOpacity onPress={() => navigation.navigate('fitness')}>
-              <Text style={styles.seeAll}>See all →</Text>
-            </TouchableOpacity> */}
-          </View>
-          <FlatList
-            data={HEALTH_METRICS} renderItem={renderMetric}
-            keyExtractor={i => i.label} numColumns={3}
-            columnWrapperStyle={styles.metricRow} scrollEnabled={false}
-          />
-        </View>
 
         {/* ── Upcoming appointments ── */}
         <View style={styles.section}>
@@ -257,4 +274,14 @@ const styles = StyleSheet.create({
   },
   emergencyIcon: { fontSize: FONT.xl, marginRight: SPACING.sm },
   emergencyText: { fontSize: FONT.md, fontWeight: '700', color: COLORS.textInverse },
+
+  // Sleep Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: SPACING.lg },
+  sleepModalCard: { width: '100%', backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.xxl, alignItems: 'center', ...SHADOW.lg },
+  sleepModalIcon: { fontSize: 40, marginBottom: SPACING.sm },
+  sleepModalTitle: { fontSize: FONT.xl, fontWeight: '800', color: COLORS.textPrimary, marginBottom: SPACING.xs },
+  sleepModalDesc: { fontSize: FONT.sm, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.lg, lineHeight: 20 },
+  sleepInput: { width: '100%', backgroundColor: COLORS.background, borderRadius: RADIUS.md, fontSize: FONT.lg, padding: SPACING.md, textAlign: 'center', fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.lg, borderWidth: 1, borderColor: COLORS.border },
+  sleepBtn: { width: '100%', backgroundColor: COLORS.primary, paddingVertical: SPACING.md, borderRadius: RADIUS.full, alignItems: 'center' },
+  sleepBtnTxt: { color: COLORS.textInverse, fontSize: FONT.md, fontWeight: '700' }
 });

@@ -278,7 +278,7 @@ export function AppProvider({ children }) {
 
             const token = await AsyncStorage.getItem('jwtToken');
 
-            const response = await fetch('http://192.168.68.157:8000/fitness/analyze', {
+            const response = await fetch('http://192.168.68.102:8000/fitness/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

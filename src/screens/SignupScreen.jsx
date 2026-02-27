@@ -261,7 +261,7 @@ export default function SignupScreen({ navigation }) {
 
       console.log('Sending signup data:', signupData);
 
-      const response = await fetch('http://192.168.68.157:8000/signup', {
+      const response = await fetch('http://192.168.68.102:8000/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -40,12 +40,12 @@ export default function ProfileScreen({ navigation }) {
 
             const token = await AsyncStorage.getItem('jwtToken');
             if (!token) {
-                setError('No authentication token found');
+                // No token yet — show default placeholder profile gracefully
                 setLoading(false);
                 return;
             }
 
-            const response = await fetch('http://192.168.68.157:8000/profile', {
+            const response = await fetch('http://192.168.68.102:8000/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -55,11 +55,9 @@ export default function ProfileScreen({ navigation }) {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    setError(strings.sessionExpired || 'Session expired. Please login again');
                     await AsyncStorage.removeItem('jwtToken');
-                } else {
-                    setError(strings.fetchError || 'Failed to fetch profile data');
                 }
+                // On any error just show defaults silently
                 setLoading(false);
                 return;
             }
@@ -68,8 +66,7 @@ export default function ProfileScreen({ navigation }) {
             setProfileData(data);
             AsyncStorage.setItem('userName', data.firstName);
         } catch (err) {
-            console.error('Profile fetch error:', err);
-            setError(err.message || 'Network error');
+            console.warn('Profile fetch error:', err.message);
         } finally {
             setLoading(false);
         }

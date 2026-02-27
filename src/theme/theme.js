@@ -37,6 +37,7 @@ export const COLORS = {
     // ── Borders ───────────────────────────────────────
     border: '#E2E8F0',
     borderDark: '#CBD5E1',
+    borderLight: '#F1F5F9',
 
     // ── Gradients (common pairs) ──────────────────────
     gradPrimary: ['#1A73E8', '#1557B0'],
