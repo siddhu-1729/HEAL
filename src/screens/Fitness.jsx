@@ -346,13 +346,6 @@ export default function FitnessScreen({ navigation }) {
 
                   <TouchableOpacity
                     style={styles.timerBtn}
-                    onPress={() => stopWorkout(w.id)}
-                  >
-                    <Text style={styles.timerBtnTxt}>⏹</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.timerBtn}
                     onPress={() => resetWorkout(w.id)}
                   >
                     <Text style={styles.timerBtnTxt}>🔄</Text>
